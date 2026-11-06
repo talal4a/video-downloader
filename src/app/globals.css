@@ -1,0 +1,84 @@
+@import 'tailwindcss';
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-sans: 'Segoe UI Variable Text', 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial,
+    'Noto Sans', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji';
+  --color-brand-50: #f1f0ff;
+  --color-brand-100: #e4e1ff;
+  --color-brand-200: #cbc5ff;
+  --color-brand-300: #a99dff;
+  --color-brand-400: #8a76ff;
+  --color-brand-500: #6d4dff;
+  --color-brand-600: #5a34f5;
+  --color-brand-700: #4b26d6;
+  --color-brand-800: #3e22ad;
+  --color-brand-900: #331f88;
+  --animate-stripes: stripes 1s linear infinite;
+  --animate-fade-in: fade-in 0.25s ease-out;
+
+  @keyframes stripes {
+    from {
+      background-position: 0 0;
+    }
+    to {
+      background-position: 28px 0;
+    }
+  }
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+      transform: translateY(4px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+}
+
+:root {
+  color-scheme: light;
+}
+:root.dark {
+  color-scheme: dark;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  @apply bg-slate-50 text-slate-900 antialiased dark:bg-[#0b1020] dark:text-slate-100;
+  font-feature-settings: 'ss01';
+}
+
+/* Thin, friendly scrollbars */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(148 163 184 / 0.5) transparent;
+}
+
+.progress-stripes {
+  background-image: linear-gradient(
+    45deg,
+    rgb(255 255 255 / 0.25) 25%,
+    transparent 25%,
+    transparent 50%,
+    rgb(255 255 255 / 0.25) 50%,
+    rgb(255 255 255 / 0.25) 75%,
+    transparent 75%,
+    transparent
+  );
+  background-size: 28px 28px;
+}
+
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+a:focus-visible {
+  outline: 2px solid var(--color-brand-500);
+  outline-offset: 2px;
+}

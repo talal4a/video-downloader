@@ -1,0 +1,16 @@
+node_modules/
+.next/
+out/
+dist-electron/
+release/
+resources/bin/*/
+!resources/bin/README.md
+coverage/
+test-results/
+*.log
+.DS_Store
+next-env.d.ts
+*.tsbuildinfo
+.env*
+tests/.tmp/
+e2e/.tmp/

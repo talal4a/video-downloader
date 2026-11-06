@@ -1,0 +1,98 @@
+name: Build & test
+
+on:
+  push:
+    branches: [main, 'claude/**']
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write # to publish a GitHub Release when a version tag (v1.2.3) is pushed
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    name: Lint, typecheck, unit tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+
+  windows:
+    name: Windows installer (build + tests on real Windows)
+    needs: checks
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+
+      - name: Download yt-dlp, FFmpeg and aria2 for Windows
+        run: npm run setup
+
+      - name: Build the app
+        run: npm run build
+
+      - name: Engine tests with the real Windows tools
+        run: npm run test:integration
+        env:
+          VD_TEST_YOUTUBE: '1'
+
+      - name: Build the Windows installer
+        run: npx electron-builder --win --x64 --publish never
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+
+      - name: Test the installed app like a user (Electron E2E)
+        run: npm run test:e2e
+        env:
+          VD_E2E_APP: release/win-unpacked/VideoDownloader.exe
+          VD_TEST_YOUTUBE: '1'
+
+      - name: Upload test screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-screenshots
+          path: e2e/.tmp/screenshots
+          if-no-files-found: ignore
+
+      - name: Upload the installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: Video-Downloader-Windows-Setup
+          path: |
+            release/*.exe
+            release/*.blockmap
+            release/latest.yml
+          if-no-files-found: error
+
+      - name: Publish GitHub Release (only for version tags)
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Video Downloader ${{ github.ref_name }}
+          body: |
+            **Windows:** download `Video-Downloader-Setup-*.exe` below and double-click it.
+            If Windows shows "Windows protected your PC", click **More info → Run anyway** (the app is free and not code-signed).
+          files: |
+            release/*.exe
+            release/*.blockmap
+            release/latest.yml

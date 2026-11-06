@@ -1,0 +1,65 @@
+# Builds the installers. Windows: one-click installer (no admin rights needed).
+appId: com.talal4a.videodownloader
+productName: Video Downloader
+copyright: Copyright © 2026 talal4a — MIT License
+directories:
+  output: release
+  buildResources: build
+files:
+  - dist-electron/**/*
+  - out/**/*
+  - package.json
+  - '!**/*.map'
+asar: true
+extraResources:
+  - from: resources/bin/${os}
+    to: bin
+    filter:
+      - '**/*'
+      - '!README.md'
+  - from: build
+    to: icons
+    filter:
+      - icon.png
+      - icon-256.png
+      - tray.png
+      - tray@2x.png
+      - trayTemplate.png
+      - trayTemplate@2x.png
+  - from: THIRD_PARTY_NOTICES.md
+    to: THIRD_PARTY_NOTICES.md
+win:
+  executableName: VideoDownloader
+  icon: build/icon.png
+  target:
+    - target: nsis
+      arch: [x64]
+nsis:
+  oneClick: true
+  perMachine: false
+  allowElevation: false
+  createDesktopShortcut: always
+  createStartMenuShortcut: true
+  shortcutName: Video Downloader
+  runAfterFinish: true
+  deleteAppDataOnUninstall: false
+  artifactName: Video-Downloader-Setup-${version}.${ext}
+mac:
+  icon: build/icon.png
+  category: public.app-category.utilities
+  identity: null
+  target:
+    - target: dmg
+  artifactName: Video-Downloader-${version}-${arch}.${ext}
+linux:
+  executableName: video-downloader
+  icon: build/icon.png
+  category: AudioVideo
+  target:
+    - target: AppImage
+  artifactName: Video-Downloader-${version}.${ext}
+publish:
+  - provider: github
+    owner: talal4a
+    repo: video-downloader
+    releaseType: release

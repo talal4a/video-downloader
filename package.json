@@ -1,0 +1,61 @@
+{
+  "name": "video-downloader",
+  "productName": "Video Downloader",
+  "version": "1.0.0",
+  "description": "Free, open-source desktop app to download videos, audio (MP3) and thumbnails from YouTube, Instagram and 1000+ sites.",
+  "author": {
+    "name": "talal4a",
+    "email": "a94177855@gmail.com"
+  },
+  "license": "MIT",
+  "private": true,
+  "homepage": "https://github.com/talal4a/video-downloader",
+  "main": "dist-electron/main.cjs",
+  "scripts": {
+    "setup": "node scripts/fetch-binaries.mjs",
+    "dev": "node scripts/build-electron.mjs && concurrently -k -n next,main,app -c blue,gray,magenta \"next dev --port 3123\" \"node scripts/build-electron.mjs --watch\" \"wait-on http://localhost:3123 && electron . --dev\"",
+    "build:ui": "next build",
+    "build:electron": "node scripts/build-electron.mjs",
+    "build": "npm run build:ui && npm run build:electron",
+    "start": "electron .",
+    "icons": "node scripts/make-icons.mjs",
+    "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p electron/tsconfig.json",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
+    "test:e2e": "vitest run --config vitest.e2e.config.ts",
+    "dist:win": "npm run build && electron-builder --win --x64 --publish never",
+    "dist:mac": "npm run build && electron-builder --mac --publish never",
+    "dist:linux": "npm run build && electron-builder --linux --publish never",
+    "dist:dir": "npm run build && electron-builder --dir --publish never"
+  },
+  "dependencies": {
+    "electron-updater": "^6.8.11"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.3.4",
+    "@types/node": "^24.19.2",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "concurrently": "^10.0.6",
+    "electron": "^45.2.3",
+    "electron-builder": "^26.18.0",
+    "esbuild": "^0.28.2",
+    "eslint": "^9.39.5",
+    "eslint-config-next": "^16.4.5",
+    "extract-zip": "^2.0.1",
+    "lucide-react": "^1.70.0",
+    "next": "^16.4.5",
+    "playwright": "1.65",
+    "postcss": "^8.5.32",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "tailwindcss": "^4.3.4",
+    "typescript": "5.9",
+    "vitest": "^5.1.0",
+    "wait-on": "^9.5.1"
+  },
+  "engines": {
+    "node": ">=22.12"
+  }
+}
