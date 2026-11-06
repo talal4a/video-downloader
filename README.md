@@ -126,11 +126,27 @@ With GitHub Actions working:
 
 Send the `.exe` to your friend (WhatsApp, Google Drive, USB…). If you make this repository **public**, the installed app will also update itself automatically from Releases (the download engine always updates itself either way).
 
-### Updating your friend's app
+### Publishing a new version (one command)
 
-1. Raise `"version"` in `package.json` (for example `1.1.0` → `1.2.0`) and run `npm run dist:win`.
-2. Publish a GitHub release with **all three** files from `release/`: the `.exe`, the `.exe.blockmap` and `latest.yml`.
-3. That's it: the installed app finds the update by itself (15 s after start, every 6 hours, or Settings → About → **Check now**), downloads it and asks to **Restart now**. Or send the new `.exe` and double-click it; it installs over the old one and keeps settings and history.
+One-time setup on the Mac (free GitHub tool, logs in through the browser):
+
+```bash
+brew install gh
+```
+
+```bash
+gh auth login
+```
+
+Then, every time you want to send an update:
+
+```bash
+npm run release
+```
+
+It builds the Windows installer, creates the GitHub release with the three files installed apps need (`.exe`, `.exe.blockmap`, `latest.yml`) and, if the current version is already out, raises the version number first and saves it in git. Add notes with `npm run release -- --notes "What changed"`.
+
+Your friend's installed app finds the update by itself (15 s after start, every 6 hours, or Settings → About → **Check now**), downloads it and asks to **Restart now**. Settings and history are kept.
 
 ### How it works
 

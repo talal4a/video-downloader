@@ -55,6 +55,7 @@ Normal users never need these.
 | `npm run dist:mac` | Mac app `release/Video-Downloader-<version>-arm64.dmg` (ad-hoc signed) |
 | `npm run dist:linux` | Linux AppImage |
 | `npm run icons` | Redraw the app and tray icons |
+| `npm run release` | Build and publish the next Windows version to GitHub Releases (needs `gh`) |
 | `npm run docs` | Rebuild this PDF (`docs/Video-Downloader-Docs.pdf`) |
 
 ## Tests
@@ -78,21 +79,26 @@ Normal users never need these.
   - Tools go to `resources/bin`, icons to `resources/icons`; the UI and code are packed in `app.asar`.
 - The installer is not code-signed (that costs money), so Windows shows "Windows protected your PC" once: **More info → Run anyway**.
 
-## Releasing a new version (manual)
+## Releasing a new version (one command)
 
-GitHub Actions is blocked on this account by a billing lock, so releases are made by hand:
+GitHub Actions is blocked on this account by a billing lock, so releases are made from the Mac with `scripts/release.mjs`:
 
-1. Change `"version"` in `package.json` (for example `1.2.0`).
-2. On the Mac: `npm run dist:win` (and `npm run dist:mac` if wanted).
-3. Open `https://github.com/talal4a/video-downloader/releases/new?tag=v1.2.0&title=Video%20Downloader%201.2.0`.
-4. Attach from `release/`: `Video-Downloader-Setup-1.2.0.exe`, `Video-Downloader-Setup-1.2.0.exe.blockmap` and `latest.yml` (these two let installed apps update themselves), plus the `.dmg` if wanted.
-5. Click **Publish release** (not "Save draft").
+1. One time: `brew install gh` and `gh auth login` (GitHub's free command-line tool; log in through the browser).
+2. Every release: `npm run release` (optionally `-- --notes "What changed"`; `-- --dry-run` only shows the steps).
+
+What it does:
+
+- If the current version is already released, raises it (`1.1.0` → `1.1.1`) and later commits and pushes the change.
+- Runs `npm run dist:win`.
+- `gh release create v<version>` with `Video-Downloader-Setup-<version>.exe`, its `.blockmap` and `latest.yml` (the files installed apps need to update themselves), published straight away.
+
+Manual alternative: open `https://github.com/talal4a/video-downloader/releases/new?tag=v<version>`, attach the same three files from `release/` and click **Publish release**.
 
 Share link: https://github.com/talal4a/video-downloader/releases/latest
 
 ## Updating a PC that already has the app
 
-**Automatic (best):** publish the new release with all three files (`.exe`, `.exe.blockmap`, `latest.yml`). The installed app checks 15 seconds after it starts and every 6 hours (or **Settings → About → Check now**), downloads the update in the background and shows "A new version is ready" → **Restart now**. Nothing else to do on that PC.
+**Automatic (best):** run `npm run release` (or publish the release with all three files: `.exe`, `.exe.blockmap`, `latest.yml`). The installed app checks 15 seconds after it starts and every 6 hours (or **Settings → About → Check now**), downloads the update in the background and shows "A new version is ready" → **Restart now**. Nothing else to do on that PC.
 
 **By hand:** send the new `Video-Downloader-Setup-<version>.exe`; double-clicking it installs over the old version. Settings, history and downloaded files are kept.
 
