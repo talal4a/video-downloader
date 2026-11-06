@@ -22,5 +22,6 @@ Short, simple guide to everything built in Video Downloader: a free desktop app 
 
 ## Current version
 
-- **1.0.0**. Windows installer: `Video-Downloader-Setup-1.0.0.exe`. Mac app: `Video-Downloader-1.0.0-arm64.dmg`.
+- **1.1.0**: adds captions (inside the video, always visible, or `.srt`) and English auto-translated captions.
+- Windows installer: `Video-Downloader-Setup-1.1.0.exe`. Mac app: `Video-Downloader-1.1.0-arm64.dmg`.
 - Download page: https://github.com/talal4a/video-downloader/releases/latest

@@ -58,11 +58,11 @@ Events: `onDownloadUpdate`, `onDownloadRemoved`, `onClipboardLink`, `onOpenUrl`,
 
 ## Data model
 
-**DownloadRequest**: `url`, `title`, `thumbnail`, `site`, `duration`, `kind` (`video`/`audio`), `quality` (number or `best`), `audioBitrate` (320/192/128), `subtitles` (`{ lang, auto }` or none), `subfolder`, `multi`.
+**DownloadRequest**: `url`, `title`, `thumbnail`, `site`, `duration`, `kind` (`video`/`audio`), `quality` (number or `best`), `audioBitrate` (320/192/128), `subtitles` (`{ lang, auto, mode }` with mode `embed`, `burn` or `file`, or none), `subfolder`, `multi`.
 
 **Job**: `id`, `request`, `status` (`queued`, `starting`, `downloading`, `processing`, `done`, `error`, `canceled`), `stage`, `progress` (0-1), `downloadedBytes`, `totalBytes`, `speed`, `eta`, `itemIndex`/`itemCount`, `filePath`, `files`, `error`, `warnings`, `turbo`, `attempts`, times.
 
-**Settings** (defaults): download folder `Downloads/Video Downloader`, catch links **on**, turbo **on** with 16 connections, 3 at a time, keep running in tray **on**, start with computer **off**, start with **Video**, default quality **1080p**, MP3 **320 kbps**, theme **Auto**, notifications **on**, daily engine update **on**. Bad values are corrected (for example connections 1-16, at a time 1-5).
+**Settings** (defaults): download folder `Downloads/Video Downloader`, catch links **on**, turbo **on** with 16 connections, 3 at a time, keep running in tray **on**, start with computer **off**, start with **Video**, default quality **1080p**, MP3 **320 kbps**, theme **Auto**, notifications **on**, daily engine update **on**, captions **In the video**. Bad values are corrected (for example connections 1-16, at a time 1-5).
 
 ## Saved data
 
@@ -97,6 +97,8 @@ App data folder: `%APPDATA%\Video Downloader` on Windows, `~/Library/Application
 - Only in installed Windows builds. Checks 15 s after start and every 6 hours from https://github.com/talal4a/video-downloader/releases (needs the repository to be public and the release to include `latest.yml`).
 - Downloads in the background; a banner "A new version is ready" offers **Restart now**. Otherwise it installs when the app quits.
 - Errors are silent (no scary messages for the user).
+- The person can also press **Check now** in Settings → About.
+- How an installed app finds a new version: it reads `latest.yml` from the newest GitHub release, compares the version with its own, downloads the new installer (checked against the SHA-512 in `latest.yml`), then installs it on restart. Settings, download history and files are kept.
 
 ## Logging
 

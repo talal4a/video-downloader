@@ -1,4 +1,4 @@
-import type { AudioBitrate, QualityChoice, Settings, ThemeSetting } from '../../shared/types';
+import type { AudioBitrate, QualityChoice, Settings, SubtitleMode, ThemeSetting } from '../../shared/types';
 
 export function defaultSettings(downloadDir: string): Settings {
   return {
@@ -15,6 +15,7 @@ export function defaultSettings(downloadDir: string): Settings {
     theme: 'system',
     notifyOnFinish: true,
     autoUpdateEngine: true,
+    subtitleMode: 'embed',
   };
 }
 
@@ -36,5 +37,6 @@ export function sanitizeSettings(current: Settings, patch: Partial<Settings>): S
     s.defaultQuality = p.defaultQuality as QualityChoice;
   if (p.audioBitrate === 320 || p.audioBitrate === 192 || p.audioBitrate === 128) s.audioBitrate = p.audioBitrate as AudioBitrate;
   if (p.theme === 'system' || p.theme === 'light' || p.theme === 'dark') s.theme = p.theme as ThemeSetting;
+  if (p.subtitleMode === 'embed' || p.subtitleMode === 'burn' || p.subtitleMode === 'file') s.subtitleMode = p.subtitleMode as SubtitleMode;
   return s;
 }

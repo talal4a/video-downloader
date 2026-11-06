@@ -19,7 +19,7 @@ import {
   type MenuItemConstructorOptions,
 } from 'electron';
 import { IPC } from '../shared/api';
-import type { AccountId, DownloadRequest, Job, Result, Settings } from '../shared/types';
+import type { AccountId, DownloadRequest, Job, Result, Settings, SubtitleMode } from '../shared/types';
 import { Accounts } from './accounts';
 import { ClipboardWatcher } from './clipboard';
 import { DownloadManager } from './core/downloads';
@@ -210,7 +210,11 @@ function validateRequest(r: unknown): DownloadRequest | null {
   const kind = q.kind === 'audio' ? 'audio' : 'video';
   const quality = q.quality === 'best' ? 'best' : typeof q.quality === 'number' && q.quality >= 100 && q.quality <= 4320 ? Math.round(q.quality) : 'best';
   const audioBitrate = q.audioBitrate === 128 || q.audioBitrate === 192 ? q.audioBitrate : 320;
-  const subs = q.subtitles && typeof q.subtitles.lang === 'string' && /^[\w@.-]{1,40}$/.test(q.subtitles.lang) ? { lang: q.subtitles.lang, auto: Boolean(q.subtitles.auto) } : null;
+  const mode: SubtitleMode = q.subtitles?.mode === 'burn' || q.subtitles?.mode === 'file' ? q.subtitles.mode : 'embed';
+  const subs =
+    q.subtitles && typeof q.subtitles.lang === 'string' && /^[\w@.-]{1,40}$/.test(q.subtitles.lang)
+      ? { lang: q.subtitles.lang, auto: Boolean(q.subtitles.auto), mode }
+      : null;
   return {
     url: q.url,
     title: typeof q.title === 'string' && q.title.trim() ? q.title.slice(0, 300) : 'video',

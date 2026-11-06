@@ -3,7 +3,7 @@
 import { Captions, Check, Clock, Download, ExternalLink, Eye, Film, ImageDown, ListVideo, Music, Radio, User } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { formatBytes, formatCount, formatDuration } from '@shared/format';
-import type { AudioBitrate, DownloadRequest, MediaInfo, MediaKind, QualityChoice, Settings } from '@shared/types';
+import type { AudioBitrate, DownloadRequest, MediaInfo, MediaKind, QualityChoice, Settings, SubtitleMode } from '@shared/types';
 import { cx, getApi } from '@/lib/api';
 import { Button, Card, Chip, Segmented } from './ui';
 
@@ -58,6 +58,12 @@ export function defaultQualityFor(info: MediaInfo, settings: Settings): QualityC
   return fit ? fit.value : info.qualities[info.qualities.length - 1].value;
 }
 
+const SUBTITLE_HELP: Record<SubtitleMode, string> = {
+  embed: 'Turn captions on or off in your video player (fast).',
+  burn: 'Always on screen, also when shared on WhatsApp (takes longer).',
+  file: 'Saved as a .srt file next to the video.',
+};
+
 export const BITRATES: { value: AudioBitrate; label: string; note: string }[] = [
   { value: 320, label: '320 kbps', note: 'Best' },
   { value: 192, label: '192 kbps', note: 'Good' },
@@ -87,6 +93,7 @@ export default function MediaCard({
   const [quality, setQuality] = useState<QualityChoice>(() => defaultQualityFor(info, settings));
   const [bitrate, setBitrate] = useState<AudioBitrate>(settings.audioBitrate);
   const [subLang, setSubLang] = useState<string>('');
+  const [subMode, setSubMode] = useState<SubtitleMode>(settings.subtitleMode ?? 'embed');
   const [busy, setBusy] = useState(false);
   const [added, setAdded] = useState(false);
   const [savingThumb, setSavingThumb] = useState(false);
@@ -98,7 +105,9 @@ export default function MediaCard({
   }, [kind, bitrate, selectedQuality, info.duration]);
 
   const label =
-    kind === 'audio' ? `Download MP3 · ${bitrate} kbps` : `Download MP4${selectedQuality ? ` · ${selectedQuality.label}` : ''}`;
+    kind === 'audio'
+      ? `Download MP3 · ${bitrate} kbps`
+      : `Download MP4${selectedQuality ? ` · ${selectedQuality.label}` : ''}${subLang ? ' · CC' : ''}`;
 
   async function start() {
     setBusy(true);
@@ -113,7 +122,7 @@ export default function MediaCard({
         kind,
         quality,
         audioBitrate: bitrate,
-        subtitles: kind === 'video' && sub ? { lang: sub.lang, auto: sub.auto } : null,
+        subtitles: kind === 'video' && sub ? { lang: sub.lang, auto: sub.auto, mode: subMode } : null,
       },
     ]);
     setBusy(false);
@@ -240,25 +249,49 @@ export default function MediaCard({
                 </div>
               )}
 
-              {kind === 'video' && info.subtitles.length > 0 && (
-                <label className="flex flex-wrap items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
-                  <Captions className="size-4 text-slate-400" />
-                  Subtitles:
-                  <select
-                    value={subLang}
-                    onChange={(e) => setSubLang(e.target.value)}
-                    className="h-9 rounded-lg bg-white px-2 text-sm ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-white/10"
-                  >
-                    <option value="">None</option>
-                    {info.subtitles.map((s) => (
-                      <option key={s.lang} value={s.lang}>
-                        {s.name}
-                      </option>
-                    ))}
-                  </select>
-                  <span className="text-xs text-slate-400">(saved as .srt next to the video)</span>
-                </label>
-              )}
+              {kind === 'video' &&
+                (info.subtitles.length > 0 ? (
+                  <div className="space-y-2" data-testid="captions">
+                    <label className="flex flex-wrap items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
+                      <Captions className="size-4 text-slate-400" />
+                      Captions:
+                      <select
+                        value={subLang}
+                        onChange={(e) => setSubLang(e.target.value)}
+                        aria-label="Captions language"
+                        className="h-9 rounded-lg bg-white px-2 text-sm ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-white/10"
+                      >
+                        <option value="">None</option>
+                        {info.subtitles.map((s) => (
+                          <option key={s.lang} value={s.lang}>
+                            {s.name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    {subLang && (
+                      <div className="flex flex-wrap items-center gap-3">
+                        <Segmented<SubtitleMode>
+                          value={subMode}
+                          onChange={(m) => {
+                            setSubMode(m);
+                            void getApi()?.updateSettings({ subtitleMode: m });
+                          }}
+                          options={[
+                            { value: 'embed', label: 'In the video', title: 'A captions track inside the video. Turn it on or off in the player.' },
+                            { value: 'burn', label: 'Always visible', title: 'Drawn onto the picture so it shows everywhere. Takes longer.' },
+                            { value: 'file', label: 'Separate .srt file', title: 'A captions file saved next to the video.' },
+                          ]}
+                        />
+                        <span className="text-xs text-slate-500 dark:text-slate-400">{SUBTITLE_HELP[subMode]}</span>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <p className="inline-flex items-center gap-1.5 text-xs text-slate-400">
+                    <Captions className="size-3.5" /> No captions available for this video.
+                  </p>
+                ))}
 
               <div className="flex flex-wrap items-center gap-3 pt-1">
                 <Button

@@ -61,9 +61,9 @@ Normal users never need these.
 
 | Suite | Count | What |
 | --- | --- | --- |
-| Unit (`tests/unit`) | 74 | Link detection, error messages, safe names, quality labels and sizes, yt-dlp commands, progress parsing, aria2 control file, cookies, settings, ZIP extractor |
-| Integration (`tests/integration`) | 20 (+1 internet) | Real yt-dlp, FFmpeg and aria2 against a local server: 720p/best merge, MP3, thumbnails, Unicode names, `(1)` copies, turbo with live progress, cancel, multi-video posts, parallel queue, errors, first-start tool download, checksum refusal, YouTube runtime and Deno fallback |
-| End-to-end (`e2e`) | 10 | Starts the real app: paste → download 720p, MP3 + thumbnail, clipboard catching, live progress + cancel, error screen, settings, dark mode, Node.js self-test of the installed app, real YouTube (internet) |
+| Unit (`tests/unit`) | 75 | Link detection, error messages, safe names, quality labels and sizes, yt-dlp commands, progress parsing, aria2 control file, cookies, settings, ZIP extractor |
+| Integration (`tests/integration`) | 24 (+1 internet) | Real yt-dlp, FFmpeg and aria2 against a local server: 720p/best merge, MP3, thumbnails, captions (inside the video, `.srt`, drawn onto the picture and checked by pixel brightness), Unicode names, `(1)` copies, turbo with live progress, cancel, multi-video posts, parallel queue, errors, first-start tool download, checksum refusal, YouTube runtime and Deno fallback |
+| End-to-end (`e2e`) | 11 | Starts the real app: paste → download 720p, MP3 + thumbnail, captions inside the video, clipboard catching, live progress + cancel, error screen, settings, dark mode, Node.js self-test of the installed app, real YouTube (internet) |
 
 - The local server (`tests/helpers/media-server.ts`) supports Range requests and a slow mode; test videos are made with FFmpeg (`tests/helpers/fixtures.ts`).
 - Checked on Node.js 22 and 26. The E2E suite was also run against the packaged app.
@@ -82,13 +82,22 @@ Normal users never need these.
 
 GitHub Actions is blocked on this account by a billing lock, so releases are made by hand:
 
-1. Change `"version"` in `package.json` (for example `1.0.1`).
+1. Change `"version"` in `package.json` (for example `1.2.0`).
 2. On the Mac: `npm run dist:win` (and `npm run dist:mac` if wanted).
-3. Open `https://github.com/talal4a/video-downloader/releases/new?tag=v1.0.1&title=Video%20Downloader%201.0.1`.
-4. Attach from `release/`: `Video-Downloader-Setup-1.0.1.exe`, `Video-Downloader-Setup-1.0.1.exe.blockmap` and `latest.yml` (these two let installed apps update themselves), plus the `.dmg` if wanted.
+3. Open `https://github.com/talal4a/video-downloader/releases/new?tag=v1.2.0&title=Video%20Downloader%201.2.0`.
+4. Attach from `release/`: `Video-Downloader-Setup-1.2.0.exe`, `Video-Downloader-Setup-1.2.0.exe.blockmap` and `latest.yml` (these two let installed apps update themselves), plus the `.dmg` if wanted.
 5. Click **Publish release** (not "Save draft").
 
 Share link: https://github.com/talal4a/video-downloader/releases/latest
+
+## Updating a PC that already has the app
+
+**Automatic (best):** publish the new release with all three files (`.exe`, `.exe.blockmap`, `latest.yml`). The installed app checks 15 seconds after it starts and every 6 hours (or **Settings → About → Check now**), downloads the update in the background and shows "A new version is ready" → **Restart now**. Nothing else to do on that PC.
+
+**By hand:** send the new `Video-Downloader-Setup-<version>.exe`; double-clicking it installs over the old version. Settings, history and downloaded files are kept.
+
+- The version number in `package.json` must be higher than the installed one, otherwise nothing updates.
+- Version 1.0.0 was published with only the `.exe`, which is fine: the app looks at the newest release, so 1.1.0 just needs all three files.
 
 ## Automatic build (when GitHub Actions works)
 
@@ -116,5 +125,6 @@ Share link: https://github.com/talal4a/video-downloader/releases/latest
 | Live streams | Download after the stream ends |
 | Some Instagram/Facebook/TikTok/X videos | Log in once in Settings → Accounts |
 | App self-update | Needs a public repository and releases that include `latest.yml` |
+| "Always visible" captions on 4K | Re-encoding 4K takes a long time on older computers; "In the video" is instant |
 
 > Only download videos you own or have permission to keep, and respect each site's terms and copyright law.

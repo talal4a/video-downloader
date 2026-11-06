@@ -34,7 +34,10 @@ function JobRow({ job }: { job: Job }) {
   const [showDetails, setShowDetails] = useState(false);
   const active = isActive(job);
   const r = job.request;
-  const format = r.kind === 'audio' ? `MP3 · ${r.audioBitrate} kbps` : `MP4 · ${qualityChoiceLabel(r.quality)}`;
+  const captions = r.subtitles?.lang
+    ? ` · Captions ${r.subtitles.mode === 'burn' ? '(always visible)' : r.subtitles.mode === 'file' ? '(.srt)' : '(in video)'}`
+    : '';
+  const format = r.kind === 'audio' ? `MP3 · ${r.audioBitrate} kbps` : `MP4 · ${qualityChoiceLabel(r.quality)}${captions}`;
   const pct = Math.round(job.progress * 100);
 
   const open = async () => {

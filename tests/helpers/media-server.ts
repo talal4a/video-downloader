@@ -14,6 +14,7 @@ const TYPES: Record<string, string> = {
   '.png': 'image/png',
   '.mp3': 'audio/mpeg',
   '.m4a': 'audio/mp4',
+  '.vtt': 'text/vtt; charset=utf-8',
 };
 
 export interface MediaServer {

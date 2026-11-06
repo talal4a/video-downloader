@@ -90,6 +90,19 @@ describe('parseInfo', () => {
     expect(info.qualities.map((q) => q.value)).toContain(1080);
   });
 
+  it('offers English auto-translated captions for videos in other languages', () => {
+    const info = parseInfo(
+      { id: 'x', title: 'Urdu video', extractor_key: 'Youtube', language: 'ur', automatic_captions: { 'ur-orig': [{}], en: [{}], fr: [{}] }, formats: ytFormats() },
+      'https://www.youtube.com/watch?v=x',
+      'k4',
+    );
+    expect(info.subtitles.map((x) => [x.lang, x.auto])).toEqual([
+      ['ur-orig', true],
+      ['en', true],
+    ]);
+    expect(info.subtitles[1].name).toBe('English (auto-translated)');
+  });
+
   it('treats an audio-only source as audio', () => {
     const info = parseInfo({ id: 's', title: 'Song', extractor_key: 'Soundcloud', formats: [{ format_id: 'mp3', vcodec: 'none', acodec: 'mp3', ext: 'mp3' }] }, 'https://soundcloud.com/a/b', 'k3');
     expect(info.hasVideo).toBe(false);
@@ -122,6 +135,12 @@ describe('buildDownloadArgs', () => {
   it('drops extras in safe mode and adds subtitles otherwise', () => {
     const withSubs = buildDownloadArgs({ req: { ...base, subtitles: { lang: 'en', auto: false } }, outDir: '/t', common: [], turbo: false, connections: 1 });
     expect(withSubs).toContain('--write-subs');
+    expect(withSubs).toContain('--embed-subs'); // "In the video" is the default
+    for (const mode of ['burn', 'file'] as const) {
+      const a = buildDownloadArgs({ req: { ...base, subtitles: { lang: 'en', auto: true, mode } }, outDir: '/t', common: [], turbo: false, connections: 1 });
+      expect(a).toContain('--write-auto-subs');
+      expect(a).not.toContain('--embed-subs');
+    }
     const safe = buildDownloadArgs({ req: { ...base, subtitles: { lang: 'en', auto: false } }, outDir: '/t', common: [], turbo: false, connections: 1, safeMode: true });
     expect(safe).not.toContain('--write-subs');
     expect(safe).not.toContain('--embed-metadata');

@@ -36,7 +36,11 @@ YouTube (videos, Shorts, playlists, channels), Instagram (posts, reels, stories)
 - **Quality chips** list only what the video really has: 8K, 4K, 2K, 1080p (Full HD), 720p (HD), 480p, 360p, 240p, 144p, each with an estimated size. The top one has a **Best** badge. Vertical videos (Shorts, Reels) are labelled by their short side, so 1080×1920 is "1080p".
 - The default choice is the best quality up to the setting **Default video quality** (1080p unless changed).
 - **MP3 quality**: 320 kbps (Best), 192 kbps (Good), 128 kbps (Small), with estimated sizes.
-- **Subtitles** (video only, when available): pick a language or an auto-generated track; saved as `.srt` next to the video.
+- **Captions** (video only): pick a language, an auto-generated track, or **English (auto-translated)** for YouTube videos in other languages. Then choose how to add them:
+  - **In the video** (default, fast): a captions track inside the MP4 that can be switched on/off in VLC, QuickTime, Windows Media Player…
+  - **Always visible**: drawn onto the picture, so they show everywhere, also when the video is shared on WhatsApp. The video is re-encoded (H.264), which takes longer; progress shows "Adding captions to the video… 45%".
+  - **Separate .srt file**: saved next to the video.
+  - The last choice is remembered. Videos without captions show "No captions available for this video." The button then reads "Download MP4 · 1080p · CC".
 - A watch link that is part of a playlist shows "This video is part of a playlist. **Show whole playlist →**".
 - Live streams and premieres that have not started show a note instead of the download button.
 - The big button reads "Download MP4 · 1080p" or "Download MP3 · 320 kbps" with "About 241 MB". After clicking it shows "Added to downloads" and the page scrolls to the list.
@@ -54,14 +58,15 @@ YouTube (videos, Shorts, playlists, channels), Instagram (posts, reels, stories)
 | Waiting in line | Queued (3 at a time by default) |
 | Starting / retrying | "Starting…", "Retrying in normal mode…", "Updating the download engine…", "Connection problem — retrying…" |
 | Downloading | Progress bar, percent, "Downloading video / audio", "12 MB of 80 MB", speed, time left, **Turbo** badge |
-| Processing | Green moving bar: "Joining video and audio…", "Converting to MP3…", "Adding cover picture…" |
+| Processing | Green moving bar: "Joining video and audio…", "Converting to MP3…", "Adding captions…", "Adding captions to the video… 45%", "Adding cover picture…" |
 | Saved | Green tick and file name; **Play**, **Show in folder** |
 | Failed | Plain message and hint, **Show technical details**, **Retry** |
 | Canceled | **Retry** |
 
 - Header: number of active downloads, **Open folder**, **Clear finished**.
 - **×** cancels a running download (all helper programs are stopped, temporary files removed). The bin icon removes an item from the list; the file stays on disk.
-- Warnings in amber, for example "Subtitles could not be saved for this video." or "The cover picture could not be added to this MP3."
+- The format line shows captions too, for example "MP4 · 1080p · Captions (in video)".
+- Warnings in amber, for example "Captions are not available for this video, so it was saved without them." or "The cover picture could not be added to this MP3."
 - The list is kept between restarts (last 500). Downloads running when the app was closed show "The download stopped because the app was closed" with **Retry**.
 - Windows taskbar icon shows the overall progress.
 

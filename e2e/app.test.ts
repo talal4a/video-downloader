@@ -4,7 +4,7 @@
 //   Packaged build:  VD_E2E_APP="release/win-unpacked/Video Downloader.exe" npm run test:e2e
 import fs from 'node:fs';
 import os from 'node:os';
-import { spawnSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { _electron as electron, type ElectronApplication, type Page } from 'playwright';
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
@@ -19,6 +19,7 @@ let page: Page;
 let server: MediaServer;
 let work: string;
 let downloads: string;
+let ffprobe: string;
 
 async function shot(name: string) {
   fs.mkdirSync(shots, { recursive: true });
@@ -36,7 +37,8 @@ beforeAll(async () => {
   const osDir = process.platform === 'win32' ? 'win' : process.platform === 'darwin' ? 'mac' : 'linux';
   const engine = new Engine({ bundledDir: path.join(repo, 'resources', 'bin', osDir), userBinDir: path.join(work, 'bin0'), cacheDir: path.join(work, 'c0') });
   await engine.init();
-  if (!engine.tools.ffmpeg) throw new Error('ffmpeg is needed to create test videos');
+  if (!engine.tools.ffmpeg || !engine.tools.ffprobe) throw new Error('ffmpeg is needed to create test videos');
+  ffprobe = engine.tools.ffprobe;
   const fixtures = makeFixtures(path.join(repo, 'tests', '.tmp', 'fixtures'), engine.tools.ffmpeg);
   server = await startMediaServer(fixtures);
 
@@ -112,6 +114,23 @@ describe('desktop app', () => {
     await page.waitForSelector('text=Thumbnail saved', { timeout: 30_000 });
     expect(filesIn(downloads).some((f) => f.endsWith('- thumbnail.jpg'))).toBe(true);
     await shot('04-mp3-and-thumbnail');
+  });
+
+  it('adds captions inside the video', async () => {
+    await page.fill('[data-testid=url-input]', `${server.url}/page-subs.html`);
+    await page.click('[data-testid=go-button]');
+    await page.waitForSelector('[data-testid=captions] select', { timeout: 120_000 });
+    await page.selectOption('[data-testid=captions] select', 'en');
+    await page.click('[data-testid=captions] button[role=radio]:has-text("In the video")');
+    await expect(page.locator('[data-testid=download-button]').innerText()).resolves.toContain('CC');
+    await shot('04b-captions');
+    const before = await page.locator('[data-testid=job][data-status=done]').count();
+    await page.click('[data-testid=download-button]');
+    await page.waitForFunction((n) => document.querySelectorAll('[data-testid=job][data-status=done]').length > n, before, { timeout: 120_000 });
+    const file = filesIn(downloads).find((f) => f.startsWith('Captioned clip') && f.endsWith('.mp4'));
+    expect(file).toBeTruthy();
+    const streams = execFileSync(ffprobe, ['-v', 'error', '-show_entries', 'stream=codec_type', '-of', 'csv=p=0', path.join(downloads, file!)], { encoding: 'utf8' });
+    expect(streams).toContain('subtitle');
   });
 
   it('catches a copied video link automatically (IDM style)', async () => {

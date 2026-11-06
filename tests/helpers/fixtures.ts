@@ -10,7 +10,7 @@ function ff(ffmpeg: string, args: string[]) {
 }
 
 export function makeFixtures(dir: string, ffmpeg: string): string {
-  const marker = path.join(dir, '.done-v3');
+  const marker = path.join(dir, '.done-v4');
   if (fs.existsSync(marker)) return dir;
   fs.mkdirSync(path.join(dir, 'dash'), { recursive: true });
   const src = ['-f', 'lavfi', '-i', 'testsrc2=size=1280x720:rate=30', '-f', 'lavfi', '-i', 'sine=frequency=440:sample_rate=44100', '-t', '6'];
@@ -39,6 +39,14 @@ export function makeFixtures(dir: string, ffmpeg: string): string {
     path.join(dir, 'multi.html'),
     `<!doctype html><html><head><meta charset="utf-8"><title>Two clips</title></head>
 <body><video src="/sample.mp4" controls></video><video src="/big.mp4" controls></video></body></html>`,
+  );
+  // A black video with an English captions track (<track>), to test captions.
+  ff(ffmpeg, ['-f', 'lavfi', '-i', 'color=c=black:size=640x360:rate=25', '-f', 'lavfi', '-i', 'sine=frequency=330:sample_rate=44100', '-t', '5', '-c:v', 'libx264', '-preset', 'veryfast', '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-movflags', '+faststart', path.join(dir, 'black.mp4')]);
+  fs.writeFileSync(path.join(dir, 'captions.en.vtt'), 'WEBVTT\n\n00:00:00.000 --> 00:00:04.800\nHELLO CAPTIONS\n');
+  fs.writeFileSync(
+    path.join(dir, 'page-subs.html'),
+    `<!doctype html><html><head><meta charset="utf-8"><title>Captioned clip</title></head>
+<body><video src="/black.mp4" controls><track kind="subtitles" src="/captions.en.vtt" srclang="en" label="English"></video></body></html>`,
   );
   fs.writeFileSync(marker, 'ok');
   return dir;

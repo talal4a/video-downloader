@@ -38,7 +38,7 @@ yt-dlp -J --flat-playlist --no-playlist --no-warnings [--cookies file] -- <link>
 | Video, chosen quality | `-f "bv*+ba/b" -S "res:<value>,vcodec:h264,acodec:aac" --merge-output-format mp4 --remux-video mp4` |
 | Video, Best | `-S "res,vcodec:h264,acodec:aac"` (highest resolution first) |
 | MP3 | `-f "ba/b" --extract-audio --audio-format mp3 --audio-quality 320K\|192K\|128K --embed-thumbnail --convert-thumbnails jpg` |
-| Subtitles | `--write-subs` or `--write-auto-subs --sub-langs <lang> --convert-subs srt` |
+| Captions | `--write-subs` or `--write-auto-subs --sub-langs <lang> --convert-subs srt`, plus `--embed-subs` for "In the video" |
 
 - Up to 1080p the app picks **H.264 + AAC in MP4**, which plays everywhere.
 - YouTube only offers 2K and 4K as VP9 or AV1; the app then picks **VP9** (better support than AV1). VP9 MP4 plays in VLC, IINA, Windows Media Player and browsers, but **not in QuickTime** on Mac.
@@ -83,6 +83,17 @@ Normal files are split over up to 16 connections; streamed formats (DASH/HLS) us
 | Private, removed, DRM, unsupported… | Stop at once with the plain message |
 
 If at least one finished file exists, the download counts as done.
+
+## Captions
+
+| Mode | How |
+| --- | --- |
+| In the video (`embed`) | yt-dlp puts the captions in the MP4 as a `mov_text` track. FFprobe checks the track is there; then the extra `.srt` is deleted. If it is missing, the `.srt` is kept with a warning |
+| Always visible (`burn`) | After the download, FFmpeg draws the `.srt` onto the picture: `-vf subtitles=captions-1.srt:fontsdir=fonts:force_style='FontName=Arial' -c:v libx264 -preset veryfast -crf 20 -c:a copy`. It runs inside the job folder with simple names (no Windows path escaping problems) and gets a copy of the system font (Arial on Windows/Mac, DejaVu Sans on Linux) so text always shows. Progress comes from `-progress pipe:1`. Cancel stops it. On failure the original video and `.srt` are kept with a warning |
+| Separate file (`file`) | The `.srt` is saved as `Title.<lang>.srt` |
+
+- Languages: the video's own captions, auto-generated captions in the original language (`<lang>-orig`), and **English (auto-translated)** when YouTube offers it and there is no English track.
+- If captions fail (for example YouTube refuses them), "safe mode" saves the video without them and says so.
 
 ## Saving files
 

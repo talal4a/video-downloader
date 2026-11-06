@@ -3,7 +3,7 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { Engine } from '../../electron/core/engine';
 import { InfoService, FriendlyFailure } from '../../electron/core/info';
@@ -242,6 +242,55 @@ describe('downloads', () => {
     const done = await waitFor(m, job.id);
     expect(done.status).toBe('error');
     expect(done.error?.message).toBeTruthy();
+  });
+
+  it('finds the captions of a page', async () => {
+    const i = await info.get(`${server.url}/page-subs.html`);
+    expect(i.subtitles.map((x) => x.lang)).toContain('en');
+  });
+
+  it('puts captions inside the video as a switchable track (no extra file)', async () => {
+    const m = newManager();
+    const job = m.add(request({ url: `${server.url}/page-subs.html`, title: 'Captions inside', subtitles: { lang: 'en', auto: false, mode: 'embed' } }));
+    const done = await waitFor(m, job.id);
+    expect(done.status, JSON.stringify(done.error)).toBe('done');
+    expect(done.warnings ?? []).toEqual([]);
+    const streams = probe(done.filePath!);
+    expect(streams.some((s) => s.codec_type === 'subtitle' && s.codec_name === 'mov_text')).toBe(true);
+    expect(fs.readdirSync(settings.downloadDir).filter((f) => f.startsWith('Captions inside') && f.endsWith('.srt'))).toEqual([]);
+  });
+
+  it('saves captions as a separate .srt file when asked', async () => {
+    const m = newManager();
+    const job = m.add(request({ url: `${server.url}/page-subs.html`, title: 'Captions file', subtitles: { lang: 'en', auto: false, mode: 'file' } }));
+    const done = await waitFor(m, job.id);
+    expect(done.status).toBe('done');
+    const srt = path.join(settings.downloadDir, 'Captions file.en.srt');
+    expect(fs.readFileSync(srt, 'utf8')).toContain('HELLO CAPTIONS');
+    expect(probe(done.filePath!).some((s) => s.codec_type === 'subtitle')).toBe(false);
+  });
+
+  it('draws captions onto the picture ("always visible")', async () => {
+    const m = newManager();
+    const stages: string[] = [];
+    const job = m.add(request({ url: `${server.url}/page-subs.html`, title: 'Captions burned', duration: 5, subtitles: { lang: 'en', auto: false, mode: 'burn' } }));
+    m.on('update', (j: Job) => j.id === job.id && j.stage && stages.push(j.stage));
+    const done = await waitFor(m, job.id);
+    expect(done.status, JSON.stringify(done.error)).toBe('done');
+    expect(done.warnings ?? []).toEqual([]);
+    expect(stages.some((st) => st.startsWith('Adding captions to the video'))).toBe(true);
+    const streams = probe(done.filePath!);
+    expect(streams.find((s) => s.codec_type === 'video')?.codec_name).toBe('h264');
+    expect(streams.some((s) => s.codec_type === 'subtitle')).toBe(false);
+    // The source video is pure black, so bright pixels in the bottom third can only be the captions.
+    const measure = spawnSync(
+      engine.tools.ffmpeg!,
+      ['-hide_banner', '-ss', '2', '-i', done.filePath!, '-frames:v', '1', '-vf', 'crop=iw:ih/3:0:ih*2/3,signalstats,metadata=print:key=lavfi.signalstats.YMAX', '-f', 'null', '-'],
+      { encoding: 'utf8' },
+    );
+    const ymax = Number(/YMAX=(\d+)/.exec(`${measure.stdout}${measure.stderr}`)?.[1] ?? 0);
+    expect(ymax).toBeGreaterThan(150);
+    expect(fs.readdirSync(settings.downloadDir).filter((f) => f.startsWith('Captions burned') && f.endsWith('.srt'))).toEqual([]);
   });
 
   it('runs downloads in parallel up to the limit and queues the rest', async () => {

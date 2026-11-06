@@ -1,5 +1,6 @@
 import { EventEmitter } from 'node:events';
 import crypto from 'node:crypto';
+import fs from 'node:fs';
 import fsp from 'node:fs/promises';
 import path from 'node:path';
 import type { DownloadRequest, FriendlyError, Job, Settings } from '../../shared/types';
@@ -341,9 +342,18 @@ export class DownloadManager extends EventEmitter {
         job.stage = 'Saving file…';
         this.emitUpdate(job.id, true);
         try {
+          const warnings = this.collectWarnings(it, outputs, result.code) ?? [];
+          warnings.push(...(await this.finishCaptions(it, outputs, outDir)));
+          if (it.cancelRequested) {
+            await removeDir(outDir);
+            return this.finish(it, 'canceled');
+          }
+          job.status = 'processing';
+          job.stage = 'Saving file…';
+          this.emitUpdate(job.id, true);
           job.files = await this.saveOutputs(job, outputs);
           job.filePath = job.files[0];
-          job.warnings = this.collectWarnings(it, outputs, result.code);
+          job.warnings = warnings.length ? warnings : undefined;
           await removeDir(outDir);
           return this.finish(it, 'done');
         } catch (err) {
@@ -436,9 +446,6 @@ export class DownloadManager extends EventEmitter {
   private collectWarnings(it: Item, outputs: CollectedMedia[], exitCode: number | null): string[] | undefined {
     const req = it.job.request;
     const warnings: string[] = [];
-    if (req.kind === 'video' && req.subtitles?.lang && outputs.every((o) => o.subtitles.length === 0)) {
-      warnings.push('Subtitles could not be saved for this video.');
-    }
     if (it.safeMode && req.kind === 'audio') warnings.push('The cover picture could not be added to this MP3.');
     if (req.kind === 'audio' && outputs.some((o) => o.ext !== 'mp3')) {
       warnings.push('Could not convert to MP3, so the original audio file was saved.');
@@ -450,6 +457,125 @@ export class DownloadManager extends EventEmitter {
       warnings.push(`${it.job.itemCount - outputs.length} of ${it.job.itemCount} items could not be downloaded.`);
     }
     return warnings.length ? warnings : undefined;
+  }
+
+  /** Does this file contain a captions/subtitle track? */
+  private async hasSubtitleStream(file: string): Promise<boolean> {
+    const ffprobe = this.deps.engine.tools.ffprobe;
+    if (!ffprobe) return false;
+    const r = await run(ffprobe, ['-v', 'error', '-select_streams', 's', '-show_entries', 'stream=codec_name', '-of', 'csv=p=0', file], {
+      collectStdout: true,
+      timeoutMs: 60000,
+    }).done;
+    return r.code === 0 && r.stdout.trim().length > 0;
+  }
+
+  /** Put captions inside the video, draw them on it, or keep the .srt file, as the person chose. */
+  private async finishCaptions(it: Item, outputs: CollectedMedia[], dir: string): Promise<string[]> {
+    const req = it.job.request;
+    const sub = req.subtitles;
+    if (req.kind !== 'video' || !sub?.lang) return [];
+    const missing = 'Captions are not available for this video, so it was saved without them.';
+    if (it.safeMode) return ['Captions could not be added, so the video was saved without them.'];
+    const mode = sub.mode ?? 'embed';
+    const warnings = new Set<string>();
+    for (const [i, out] of outputs.entries()) {
+      if (mode === 'embed') {
+        if (await this.hasSubtitleStream(out.path)) {
+          // Already inside the video: no extra .srt file needed.
+          for (const s of out.subtitles) await fsp.rm(s.path, { force: true });
+          out.subtitles = [];
+        } else if (out.subtitles.length) {
+          warnings.add('Captions could not be put inside the video, so they were saved as a separate .srt file.');
+        } else {
+          warnings.add(missing);
+        }
+      } else if (mode === 'burn') {
+        const srt = out.subtitles.find((s) => s.ext === 'srt') ?? out.subtitles[0];
+        if (!srt) {
+          warnings.add(missing);
+          continue;
+        }
+        const burned = await this.burnCaptions(it, out, srt.path, dir, i + 1);
+        if (it.cancelRequested) return [];
+        if (burned) {
+          await fsp.rm(out.path, { force: true });
+          for (const s of out.subtitles) await fsp.rm(s.path, { force: true });
+          out.path = burned;
+          out.ext = 'mp4';
+          out.subtitles = [];
+        } else {
+          warnings.add('Captions could not be drawn onto the video, so they were saved as a separate .srt file.');
+        }
+      } else if (!out.subtitles.length) {
+        warnings.add(missing);
+      }
+    }
+    return [...warnings];
+  }
+
+  /** Draw captions onto the picture with FFmpeg (re-encodes to H.264, plays everywhere). */
+  private async burnCaptions(it: Item, out: CollectedMedia, srtPath: string, dir: string, n: number): Promise<string | null> {
+    const ffmpeg = this.deps.engine.tools.ffmpeg;
+    if (!ffmpeg) return null;
+    const job = it.job;
+    // Simple file names + running inside the folder avoid FFmpeg's filter escaping rules (C:\ etc).
+    const subName = `captions-${n}.srt`;
+    const outName = `with-captions-${n}.mp4`;
+    await fsp.copyFile(srtPath, path.join(dir, subName));
+    let filter = `subtitles=${subName}`;
+    const font = systemFont();
+    if (font) {
+      await fsp.mkdir(path.join(dir, 'fonts'), { recursive: true });
+      await fsp.copyFile(font.file, path.join(dir, 'fonts', path.basename(font.file))).catch(() => {});
+      filter += `:fontsdir=fonts:force_style='FontName=${font.family}'`;
+    }
+    const duration = job.request.duration ?? (await this.probeDuration(out.path));
+    const label = 'Adding captions to the video…';
+    job.status = 'processing';
+    job.stage = label;
+    this.emitUpdate(job.id, true);
+    const handle = run(
+      ffmpeg,
+      [
+        '-hide_banner', '-nostdin', '-y', '-i', path.basename(out.path),
+        '-map', '0:v:0', '-map', '0:a?', '-vf', filter,
+        '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '20', '-pix_fmt', 'yuv420p',
+        '-c:a', 'copy', '-movflags', '+faststart', '-progress', 'pipe:1', '-nostats', outName,
+      ],
+      {
+        cwd: dir,
+        onLine: (line) => {
+          const m = /^out_time_(?:us|ms)=(\d+)/.exec(line);
+          if (m && duration) {
+            const pct = Math.min(99, Math.round((Number(m[1]) / 1e6 / duration) * 100));
+            job.stage = `${label} ${pct}%`;
+            this.emitUpdate(job.id);
+          }
+        },
+      },
+    );
+    it.handle = handle;
+    const r = await handle.done;
+    it.handle = undefined;
+    const result = path.join(dir, outName);
+    if (r.code !== 0 || it.cancelRequested) {
+      this.deps.log?.(`Burning captions failed: ${r.tail.slice(-800)}`);
+      await fsp.rm(result, { force: true });
+      return null;
+    }
+    return result;
+  }
+
+  private async probeDuration(file: string): Promise<number | undefined> {
+    const ffprobe = this.deps.engine.tools.ffprobe;
+    if (!ffprobe) return undefined;
+    const r = await run(ffprobe, ['-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', file], {
+      collectStdout: true,
+      timeoutMs: 60000,
+    }).done;
+    const d = Number(r.stdout.trim());
+    return Number.isFinite(d) && d > 0 ? d : undefined;
   }
 
   private async saveOutputs(job: Job, outputs: CollectedMedia[]): Promise<string[]> {
@@ -606,6 +732,23 @@ export class DownloadManager extends EventEmitter {
     job.downloadedBytes = downloaded;
     job.totalBytes = total || undefined;
   }
+}
+
+/** A common font file + its family name, handed to FFmpeg so burned captions always have a font. */
+function systemFont(): { file: string; family: string } | null {
+  const candidates: { file: string; family: string }[] =
+    process.platform === 'win32'
+      ? [{ file: path.join(process.env.WINDIR || 'C:\\Windows', 'Fonts', 'arial.ttf'), family: 'Arial' }]
+      : process.platform === 'darwin'
+        ? [
+            { file: '/System/Library/Fonts/Supplemental/Arial.ttf', family: 'Arial' },
+            { file: '/Library/Fonts/Arial.ttf', family: 'Arial' },
+          ]
+        : [
+            { file: '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', family: 'DejaVu Sans' },
+            { file: '/usr/share/fonts/TTF/DejaVuSans.ttf', family: 'DejaVu Sans' },
+          ];
+  return candidates.find((c) => fs.existsSync(c.file)) ?? null;
 }
 
 /** Did the run die while handling cover art / subtitles / metadata (rather than the video itself)? */

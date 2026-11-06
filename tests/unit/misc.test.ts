@@ -27,7 +27,10 @@ describe('settings', () => {
       defaultQuality: 720,
       audioBitrate: 999 as never,
       turbo: false,
+      subtitleMode: 'nope' as never,
     });
+    expect(s.subtitleMode).toBe('embed');
+    expect(sanitizeSettings(s, { subtitleMode: 'burn' }).subtitleMode).toBe('burn');
     expect(s.maxConcurrent).toBe(5);
     expect(s.connections).toBe(1);
     expect(s.theme).toBe('system');

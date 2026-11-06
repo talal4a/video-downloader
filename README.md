@@ -25,7 +25,7 @@ Files are saved in **Downloads → Video Downloader**. Click **Play** or the fol
 Other handy things:
 - **Save thumbnail (HD)** saves the video's picture in the biggest size available.
 - **Playlists:** paste a YouTube playlist link and tick the videos you want. They are saved in a folder named after the playlist.
-- **Subtitles:** for videos that have them, choose a language; a `.srt` file is saved next to the video.
+- **Captions:** choose a language, then **In the video** (turn on/off in the player), **Always visible** (always on screen, takes longer) or **Separate .srt file**.
 - **Several downloads at once:** they queue up and run 3 at a time (changeable in Settings).
 - Closing the window keeps the app running near the clock (system tray) so it can keep catching links. Right-click the icon → **Quit** to close it completely.
 - **Settings → Accounts:** if an Instagram/Facebook/TikTok/X video says "needs you to be logged in", log in there once.
@@ -55,7 +55,8 @@ The app keeps a log at `%APPDATA%\Video Downloader\logs\main.log` (useful when a
 | MP4 video and MP3 audio (320/192/128 kbps) | ✅ | MP3 gets the title and cover picture |
 | Multi-connection turbo download (IDM-style) | ✅ | aria2 with up to 16 connections per file, live speed/ETA. Falls back to normal mode automatically if a site refuses |
 | Parallel fragments for DASH/HLS streams | ✅ | 8 fragments at a time |
-| Playlists, multi-video posts, subtitles | ✅ | |
+| Playlists, multi-video posts | ✅ | |
+| Captions | ✅ | Inside the video (switchable), always visible (drawn on the picture), or `.srt`; English auto-translation for YouTube |
 | Queue, cancel, retry, history | ✅ | Automatic retries for network hiccups; engine self-update when a site changes |
 | Instagram / Facebook / TikTok / X private-ish content | ⚠️ | Works after logging in via Settings → Accounts |
 | YouTube age-restricted videos | ❌ | Needs a signed-in YouTube account; Google blocks sign-in inside apps |
@@ -124,6 +125,12 @@ With GitHub Actions working:
   When the run finishes, the installer is on the repository's **Releases** page.
 
 Send the `.exe` to your friend (WhatsApp, Google Drive, USB…). If you make this repository **public**, the installed app will also update itself automatically from Releases (the download engine always updates itself either way).
+
+### Updating your friend's app
+
+1. Raise `"version"` in `package.json` (for example `1.1.0` → `1.2.0`) and run `npm run dist:win`.
+2. Publish a GitHub release with **all three** files from `release/`: the `.exe`, the `.exe.blockmap` and `latest.yml`.
+3. That's it: the installed app finds the update by itself (15 s after start, every 6 hours, or Settings → About → **Check now**), downloads it and asks to **Restart now**. Or send the new `.exe` and double-click it; it installs over the old one and keeps settings and history.
 
 ### How it works
 

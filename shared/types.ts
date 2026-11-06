@@ -7,6 +7,14 @@ export type QualityChoice = number | 'best';
 
 export type AudioBitrate = 320 | 192 | 128;
 
+/**
+ * How captions are added to a video:
+ * - "embed": a captions track inside the MP4 that players can switch on/off (fast)
+ * - "burn": drawn onto the picture, always visible everywhere (re-encodes, slower)
+ * - "file": a separate .srt file next to the video
+ */
+export type SubtitleMode = 'embed' | 'burn' | 'file';
+
 export interface QualityOption {
   /** Value passed to yt-dlp's `res:` sort (short side of the frame). */
   value: number;
@@ -80,8 +88,8 @@ export interface DownloadRequest {
   kind: MediaKind;
   quality: QualityChoice;
   audioBitrate: AudioBitrate;
-  /** Subtitle language code to save as .srt next to the video, or null. */
-  subtitles?: { lang: string; auto: boolean } | null;
+  /** Captions to add, or null. See SubtitleMode for how they are added. */
+  subtitles?: { lang: string; auto: boolean; mode?: SubtitleMode } | null;
   /** Put the file(s) in this sub-folder of the download folder (used for playlists). */
   subfolder?: string;
   /** The URL holds several videos that must be downloaded in one go (Instagram carousel etc). */
@@ -144,6 +152,8 @@ export interface Settings {
   theme: ThemeSetting;
   notifyOnFinish: boolean;
   autoUpdateEngine: boolean;
+  /** Last used way of adding captions. */
+  subtitleMode: SubtitleMode;
 }
 
 export interface EngineInfo {

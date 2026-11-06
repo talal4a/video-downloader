@@ -139,6 +139,11 @@ export function parseSubtitles(raw: Raw): SubtitleOption[] {
     if (out.some((s) => s.lang === lang.replace(/-orig$/, ''))) continue;
     out.push({ lang, name: `${langName(lang)} (auto-generated)`, auto: true });
   }
+  // Videos in other languages: YouTube can translate the captions to English.
+  const hasEnglish = out.some((s) => /^en\b/.test(s.lang));
+  if (!hasEnglish && auto.en && !keys.some((k) => /^en\b/.test(k))) {
+    out.push({ lang: 'en', name: 'English (auto-translated)', auto: true });
+  }
   return out.slice(0, 60);
 }
 
@@ -374,6 +379,9 @@ export function buildDownloadArgs(input: DownloadArgsInput): string[] {
         '--convert-subs',
         'srt',
       );
+      // "In the video": a switchable captions track inside the MP4 (mov_text).
+      // "Always visible" is drawn onto the picture afterwards by the download manager.
+      if ((req.subtitles.mode ?? 'embed') === 'embed') args.push('--embed-subs');
     }
   }
 
@@ -503,7 +511,8 @@ export const POSTPROCESSOR_LABELS: Record<string, string> = {
   Metadata: 'Adding title and details…',
   FFmpegMetadata: 'Adding title and details…',
   ThumbnailsConvertor: 'Preparing cover picture…',
-  SubtitlesConvertor: 'Preparing subtitles…',
+  SubtitlesConvertor: 'Preparing captions…',
+  EmbedSubtitle: 'Adding captions…',
   FixupM3u8: 'Fixing video…',
   FixupM4a: 'Fixing audio…',
   FixupStretched: 'Fixing video…',
