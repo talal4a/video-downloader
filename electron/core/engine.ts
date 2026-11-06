@@ -1,9 +1,12 @@
 // Locates the helper programs (yt-dlp, FFmpeg, aria2) and keeps yt-dlp up to date.
+import { spawn } from 'node:child_process';
 import fs from 'node:fs';
 import fsp from 'node:fs/promises';
 import path from 'node:path';
 import type { EngineInfo } from '../../shared/types';
 import { run, runForOutput } from './process';
+import type { FetchLike } from './thumbnails';
+import { installTools, toolSources, type SetupProgress } from './toolsetup';
 
 const IS_WIN = process.platform === 'win32';
 const exe = (name: string) => (IS_WIN ? `${name}.exe` : name);
@@ -30,6 +33,8 @@ export interface EngineOptions {
   stateFile?: string;
   env?: NodeJS.ProcessEnv;
   log?: (msg: string) => void;
+  /** Used to download missing tools (Electron passes net.fetch so system proxies work). */
+  fetchImpl?: FetchLike;
 }
 
 function isExecutable(p: string): boolean {
@@ -93,10 +98,57 @@ interface EngineState {
   lastUpdateResult?: string;
 }
 
+/** JavaScript runtime yt-dlp uses to solve YouTube's challenges (needed for full quality lists). */
+export interface JsRuntime {
+  kind: 'node' | 'deno';
+  path: string;
+  /** The Electron app itself, run as Node.js (ELECTRON_RUN_AS_NODE=1). */
+  electron: boolean;
+}
+
+/** Run a tiny script exactly the way yt-dlp does (permission flags, script on stdin). */
+export function testNodeRuntime(execPath: string, electron: boolean, env: NodeJS.ProcessEnv): Promise<boolean> {
+  const childEnv = { ...env, ...(electron ? { ELECTRON_RUN_AS_NODE: '1' } : {}) };
+  const exec = (args: string[], input?: string) =>
+    new Promise<{ code: number | null; out: string; err: string }>((resolve) => {
+      let out = '';
+      let err = '';
+      let child;
+      try {
+        child = spawn(execPath, args, { env: childEnv, windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'] });
+      } catch {
+        resolve({ code: -1, out, err: 'spawn failed' });
+        return;
+      }
+      const timer = setTimeout(() => child.kill(), 20000);
+      child.stdout.on('data', (d: Buffer) => (out += d.toString()));
+      child.stderr.on('data', (d: Buffer) => (err += d.toString()));
+      child.on('error', () => resolve({ code: -1, out, err: 'error' }));
+      child.on('close', (code: number | null) => {
+        clearTimeout(timer);
+        resolve({ code, out, err });
+      });
+      child.stdin.on('error', () => {});
+      child.stdin.end(input ?? '');
+    });
+  return (async () => {
+    const v = await exec(['--version']);
+    const m = /^v(\d+)\.(\d+)/.exec(v.out.trim());
+    if (!m || Number(m[1]) < 22) return false;
+    const [major, minor] = [Number(m[1]), Number(m[2])];
+    const flags = major > 23 || (major === 23 && minor >= 5) ? ['--permission'] : ['--experimental-permission', '--no-warnings=ExperimentalWarning'];
+    const r = await exec([...flags, '-'], 'console.log(6 * 7)');
+    return r.code === 0 && r.out.trim() === '42' && r.err.trim() === '';
+  })();
+}
+
 export class Engine {
   tools: ToolPaths = { ytdlp: null, ffmpeg: null, ffprobe: null, aria2c: null };
   version?: string;
   updating = false;
+  setup?: SetupProgress;
+  js: JsRuntime | null = null;
+  private setupPromise: Promise<void> | null = null;
   private updatePromise: Promise<string> | null = null;
   private state: EngineState = {};
   private readonly env: NodeJS.ProcessEnv;
@@ -138,22 +190,107 @@ export class Engine {
     }
     if (!ytdlp) ytdlp = findIn(this.opts.userBinDir, YTDLP_NAMES) ?? findInPath(YTDLP_NAMES, this.env);
 
-    const ffDir = this.env.VD_FFMPEG_DIR;
-    const ffmpeg =
-      findIn(ffDir, [exe('ffmpeg')]) ?? findIn(this.opts.bundledDir, [exe('ffmpeg')]) ?? findInPath([exe('ffmpeg')], this.env);
-    const ffprobe =
-      findIn(ffDir, [exe('ffprobe')]) ??
-      findIn(this.opts.bundledDir, [exe('ffprobe')]) ??
-      findInPath([exe('ffprobe')], this.env);
+    this.tools = { ytdlp, ...this.resolveHelpers() };
+    await this.detectJsRuntime();
+    this.version = ytdlp ? ((await runForOutput(ytdlp, ['--version'], this.childEnv(), 60000)) ?? undefined) : undefined;
+    this.log(
+      `Engine: yt-dlp=${ytdlp} (${this.version}) ffmpeg=${this.tools.ffmpeg} aria2c=${this.tools.aria2c} js=${this.js ? `${this.js.kind}:${this.js.path}` : 'none'}`,
+    );
+  }
+
+  /** Prefer the app's own Node.js; fall back to Deno or a system Node.js if it does not work here. */
+  private async detectJsRuntime(): Promise<void> {
+    const own = this.opts.jsRuntimePath;
+    if (own && !this.env.VD_FORCE_JS_FALLBACK && (await testNodeRuntime(own, Boolean(this.opts.jsRuntimeIsElectron), this.env))) {
+      this.js = { kind: 'node', path: own, electron: Boolean(this.opts.jsRuntimeIsElectron) };
+      return;
+    }
+    if (own) this.log('Built-in JavaScript runtime self-test failed; looking for Deno or Node.js');
+    const deno = findIn(this.opts.userBinDir, [exe('deno')]) ?? findInPath([exe('deno')], this.env);
+    if (deno) {
+      this.js = { kind: 'deno', path: deno, electron: false };
+      return;
+    }
+    const node = this.env.VD_FORCE_JS_FALLBACK ? null : findInPath([exe('node')], this.env);
+    if (node && (await testNodeRuntime(node, false, this.env))) {
+      this.js = { kind: 'node', path: node, electron: false };
+      return;
+    }
+    this.js = null;
+  }
+
+  private get ffmpegDir(): string {
+    return path.join(this.opts.userBinDir, 'ffmpeg');
+  }
+
+  private resolveHelpers(): Omit<ToolPaths, 'ytdlp'> {
+    const dirs = [this.env.VD_FFMPEG_DIR, this.opts.bundledDir, this.ffmpegDir];
+    const pick = (name: string) => {
+      for (const d of dirs) {
+        const p = findIn(d, [exe(name)]);
+        if (p) return p;
+      }
+      return findInPath([exe(name)], this.env);
+    };
     // VD_ARIA2C lets tests point at a specific aria2c, or disable it with an empty value.
     const ariaOverride = this.env.VD_ARIA2C;
     let aria2c: string | null;
     if (ariaOverride !== undefined) aria2c = ariaOverride && isExecutable(ariaOverride) ? ariaOverride : null;
-    else aria2c = findIn(this.opts.bundledDir, [exe('aria2c')]) ?? findInPath([exe('aria2c')], this.env);
+    else
+      aria2c =
+        findIn(this.opts.bundledDir, [exe('aria2c')]) ?? findIn(this.opts.userBinDir, [exe('aria2c')]) ?? findInPath([exe('aria2c')], this.env);
+    return { ffmpeg: pick('ffmpeg'), ffprobe: pick('ffprobe'), aria2c };
+  }
 
-    this.tools = { ytdlp, ffmpeg, ffprobe, aria2c };
-    this.version = ytdlp ? ((await runForOutput(ytdlp, ['--version'], this.childEnv(), 60000)) ?? undefined) : undefined;
-    this.log(`Engine: yt-dlp=${ytdlp} (${this.version}) ffmpeg=${ffmpeg} aria2c=${aria2c}`);
+  /** Which required tools are missing (aria2 only counts on Windows, where we can fetch it). */
+  missing(): { ytdlp: boolean; ffmpeg: boolean; aria2: boolean; deno: boolean } {
+    return {
+      ytdlp: !this.tools.ytdlp,
+      ffmpeg: !this.tools.ffmpeg || !this.tools.ffprobe,
+      aria2: !this.tools.aria2c && process.platform === 'win32' && this.env.VD_ARIA2C === undefined,
+      deno: !this.js,
+    };
+  }
+
+  /**
+   * Download any missing tool from its official release (first start without bundled tools,
+   * or after an antivirus removed one). Safe to call repeatedly.
+   */
+  ensureTools(onProgress?: (p: SetupProgress) => void): Promise<void> {
+    if (this.setupPromise) return this.setupPromise;
+    const need = this.missing();
+    if (!need.ytdlp && !need.ffmpeg && !need.aria2 && !need.deno) return Promise.resolve();
+    this.setupPromise = (async () => {
+      const report = (p: SetupProgress) => {
+        this.setup = p;
+        onProgress?.(p);
+      };
+      report({ step: 'Getting ready for first use…', progress: 0 });
+      const problems = await installTools({
+        fetchImpl: this.opts.fetchImpl ?? fetch,
+        sources: toolSources(process.platform, this.env.VD_TOOLS_BASE || undefined),
+        binDir: this.opts.userBinDir,
+        ffmpegDir: this.ffmpegDir,
+        need,
+        onProgress: report,
+        log: this.log,
+      });
+      if (need.ytdlp) {
+        const y = findIn(this.opts.userBinDir, YTDLP_NAMES);
+        if (y) {
+          this.tools.ytdlp = y;
+          this.version = (await runForOutput(y, ['--version'], this.childEnv(), 60000)) ?? undefined;
+        }
+      }
+      this.tools = { ytdlp: this.tools.ytdlp, ...this.resolveHelpers() };
+      if (need.deno) await this.detectJsRuntime();
+      this.setup = problems.length ? { step: 'Setup failed', error: problems.join('\n') } : undefined;
+      onProgress?.(this.setup ?? { step: 'Ready', progress: 1 });
+      this.log(`Tool setup finished. Problems: ${problems.join('; ') || 'none'}`);
+    })().finally(() => {
+      this.setupPromise = null;
+    });
+    return this.setupPromise;
   }
 
   private readBundledVersions(): { ytdlp?: string } {
@@ -184,7 +321,7 @@ export class Engine {
   }
 
   get hasJsRuntime(): boolean {
-    return Boolean(this.opts.jsRuntimePath);
+    return Boolean(this.js);
   }
 
   /** Environment for yt-dlp: our tools first in PATH, UTF-8 output, Electron-as-Node for YouTube. */
@@ -198,7 +335,8 @@ export class Engine {
     env[pathKey] = [...dirs, env[pathKey] ?? ''].filter(Boolean).join(path.delimiter);
     env.PYTHONIOENCODING = 'utf-8';
     env.PYTHONUTF8 = '1';
-    if (this.opts.jsRuntimeIsElectron) env.ELECTRON_RUN_AS_NODE = '1';
+    if (this.js?.electron) env.ELECTRON_RUN_AS_NODE = '1';
+    else delete env.ELECTRON_RUN_AS_NODE;
     return env;
   }
 
@@ -206,15 +344,16 @@ export class Engine {
   commonArgs(): string[] {
     const out = ['--ignore-config', '--color', 'never', '--encoding', 'utf-8', '--cache-dir', this.opts.cacheDir];
     if (this.tools.ffmpeg) out.push('--ffmpeg-location', path.dirname(this.tools.ffmpeg));
-    if (this.opts.jsRuntimePath) out.push('--no-js-runtimes', '--js-runtimes', `node:${this.opts.jsRuntimePath}`);
+    if (this.js) out.push('--no-js-runtimes', '--js-runtimes', `${this.js.kind}:${this.js.path}`);
     out.push('--socket-timeout', '30', '--retries', '10', '--fragment-retries', '10', '--extractor-retries', '3');
     return out;
   }
 
   problems(): string[] {
+    if (this.setupPromise) return [];
     const p: string[] = [];
-    if (!this.tools.ytdlp) p.push('The download engine (yt-dlp) was not found.');
-    if (!this.tools.ffmpeg) p.push('FFmpeg was not found: HD video merging and MP3 conversion will not work.');
+    if (!this.tools.ytdlp) p.push('The download engine (yt-dlp) is missing.');
+    if (!this.tools.ffmpeg || !this.tools.ffprobe) p.push('FFmpeg is missing: HD video and MP3 conversion will not work.');
     return p;
   }
 
@@ -225,10 +364,12 @@ export class Engine {
       ffmpeg: Boolean(this.tools.ffmpeg && this.tools.ffprobe),
       aria2: Boolean(this.tools.aria2c),
       jsRuntime: this.hasJsRuntime,
+      jsRuntimeName: this.js ? (this.js.electron ? 'built-in' : this.js.kind === 'deno' ? 'Deno' : 'Node.js') : undefined,
       updating: this.updating,
       lastUpdateCheck: this.state.lastUpdateCheck,
       lastUpdateResult: this.state.lastUpdateResult,
       problems: this.problems(),
+      setup: this.setup,
     };
   }
 

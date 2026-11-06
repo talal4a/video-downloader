@@ -34,6 +34,8 @@ jobs:
   windows:
     name: Windows installer (build + tests on real Windows)
     needs: checks
+    # Windows minutes count double on private repos: only build installers for main, tags and manual runs.
+    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
     runs-on: windows-latest
     timeout-minutes: 45
     steps:

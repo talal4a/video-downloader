@@ -96,7 +96,13 @@ const engine = new Engine({
   jsRuntimeIsElectron: true,
   stateFile: path.join(userData, 'engine.json'),
   log,
+  fetchImpl: (url, init) => net.fetch(url, init),
 });
+
+/** Download missing tools (first start / antivirus removed one) and tell the UI how it goes. */
+function ensureTools(): Promise<void> {
+  return engine.ensureTools((p) => send(IPC.evEngine, { ...engine.info(), setup: p.step === 'Ready' ? undefined : p }));
+}
 let engineReady: Promise<void> = Promise.resolve();
 
 let mainWindow: BrowserWindow | null = null;
@@ -483,6 +489,13 @@ function registerIpc(): void {
   });
   ipcMain.handle(IPC.updateEngine, async () => {
     await engineReady;
+    const m = engine.missing();
+    if (m.ytdlp || m.ffmpeg || m.aria2) {
+      await ensureTools();
+      const i = engine.info();
+      send(IPC.evEngine, i);
+      return i;
+    }
     const p = engine.update();
     send(IPC.evEngine, engine.info());
     await p;
@@ -563,10 +576,13 @@ if (!app.requestSingleInstanceLock()) {
     if (!isDev) handleAppProtocol(path.join(appRoot, 'out'));
     registerIpc();
     await removeDir(tempRoot);
-    engineReady = engine.init().then(
-      () => send(IPC.evEngine, engine.info()),
-      (err) => log(`engine init failed: ${(err as Error).stack}`),
-    );
+    engineReady = engine
+      .init()
+      .then(() => ensureTools())
+      .then(
+        () => send(IPC.evEngine, engine.info()),
+        (err) => log(`engine init failed: ${(err as Error).stack}`),
+      );
     createWindow(!startHidden);
     createTray();
     applySettingsSideEffects(null);

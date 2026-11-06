@@ -9,7 +9,7 @@ import MediaCard from './MediaCard';
 import PlaylistCard from './PlaylistCard';
 import SettingsPanel from './SettingsPanel';
 import { ToastProvider, useToast } from './Toasts';
-import { Button, Card } from './ui';
+import { Button, Card, ProgressBar } from './ui';
 
 type InfoState =
   | { status: 'idle' }
@@ -180,6 +180,12 @@ function Main() {
   };
 
   const loading = state.status === 'loading';
+  const [fixing, setFixing] = useState(false);
+  const fixEngine = async () => {
+    setFixing(true);
+    setEngine(await api.updateEngine());
+    setFixing(false);
+  };
 
   return (
     <div
@@ -222,7 +228,7 @@ function Main() {
                 )}
               >
                 <span className={cx('size-1.5 rounded-full', engine.problems.length ? 'bg-rose-500' : 'bg-emerald-500')} />
-                {engine.updating ? 'Updating engine…' : engine.problems.length ? 'Problem' : 'Ready'}
+                {engine.setup && !engine.setup.error ? 'Setting up…' : engine.updating ? 'Updating engine…' : engine.problems.length ? 'Problem' : 'Ready'}
               </span>
             )}
             <Button variant="ghost" icon={<SettingsIcon className="size-4" />} onClick={() => setSettingsOpen(true)} data-testid="open-settings">
@@ -244,14 +250,34 @@ function Main() {
           </div>
         )}
 
-        {engine && engine.problems.length > 0 && (
+        {engine?.setup && !engine.setup.error && (
+          <div className="rounded-2xl bg-brand-50 p-4 ring-1 ring-brand-200 dark:bg-brand-500/10 dark:ring-brand-500/30" data-testid="setup-banner">
+            <p className="flex items-center gap-2 text-sm font-semibold text-brand-900 dark:text-brand-100">
+              <LoaderCircle className="size-4 animate-spin" /> Getting ready for first use — this happens only once
+            </p>
+            <p className="mt-1 text-[13px] text-brand-800/80 dark:text-brand-200/80">
+              {engine.setup.step}
+              {engine.setup.progress != null && engine.setup.progress > 0 ? ` ${Math.round(engine.setup.progress * 100)}%` : ''}
+            </p>
+            <div className="mt-2">
+              <ProgressBar value={engine.setup.progress ?? 0} indeterminate={!engine.setup.progress} />
+            </div>
+          </div>
+        )}
+
+        {engine && (engine.problems.length > 0 || engine.setup?.error) && (
           <div className="flex items-start gap-3 rounded-2xl bg-rose-50 p-4 text-sm text-rose-800 ring-1 ring-rose-200 dark:bg-rose-500/10 dark:text-rose-200 dark:ring-rose-500/30">
             <TriangleAlert className="mt-0.5 size-5 shrink-0" />
-            <div>
+            <div className="min-w-0 flex-1">
               {engine.problems.map((p) => (
                 <p key={p}>{p}</p>
               ))}
-              <p className="mt-1 text-rose-600 dark:text-rose-300">Please reinstall Video Downloader to fix this.</p>
+              <p className="mt-1 text-rose-600 dark:text-rose-300">
+                The app downloads these parts automatically. Check that the internet is working, then click Fix it.
+              </p>
+              <Button size="sm" variant="danger" className="mt-2" loading={fixing} onClick={fixEngine}>
+                Fix it
+              </Button>
             </div>
           </div>
         )}

@@ -147,6 +147,8 @@ describe('desktop app', () => {
     await page.click('[data-testid=open-settings]');
     await page.waitForSelector('text=Download engine');
     await page.waitForSelector('text=/yt-dlp \\d{4}\\./');
+    // The packaged app must be able to run itself as Node.js for YouTube (no extra download needed).
+    await page.waitForSelector(process.env.VD_E2E_APP ? 'text=YouTube helper ready (built-in)' : 'text=/YouTube helper ready/');
     await shot('07-settings');
     await page.keyboard.press('Escape');
   });

@@ -7,6 +7,7 @@ const nextConfig: NextConfig = {
   devIndicators: false,
   reactStrictMode: true,
   poweredByHeader: false,
+  agentRules: false,
 };
 
 export default nextConfig;

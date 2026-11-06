@@ -227,6 +227,8 @@ export default function SettingsPanel({
                 <Status ok={engine.ffmpeg}>FFmpeg {engine.ffmpeg ? 'ready' : 'missing'}</Status>
                 <br />
                 <Status ok={engine.aria2}>aria2 turbo {engine.aria2 ? 'ready' : 'missing'}</Status>
+                <br />
+                <Status ok={engine.jsRuntime}>YouTube helper {engine.jsRuntime ? `ready (${engine.jsRuntimeName})` : 'missing — some qualities may not show'}</Status>
                 {engine.lastUpdateResult && (
                   <p className="pt-1 text-xs text-slate-500">
                     Last check: {engine.lastUpdateResult}

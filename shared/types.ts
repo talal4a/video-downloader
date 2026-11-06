@@ -152,10 +152,14 @@ export interface EngineInfo {
   ffmpeg: boolean;
   aria2: boolean;
   jsRuntime: boolean;
+  /** "built-in", "Deno" or "Node.js" */
+  jsRuntimeName?: string;
   updating: boolean;
   lastUpdateCheck?: number;
   lastUpdateResult?: string;
   problems: string[];
+  /** First-start download of missing tools (or its error). */
+  setup?: { step: string; progress?: number; error?: string };
 }
 
 export type AccountId = 'instagram' | 'facebook' | 'tiktok' | 'x';

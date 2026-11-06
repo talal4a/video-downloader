@@ -95,6 +95,11 @@ describe('engine', () => {
     expect(engine.info().ffmpeg).toBe(true);
     expect(engine.problems()).toEqual([]);
   });
+
+  it('uses its own Node.js as the JavaScript runtime for YouTube after a self-test', () => {
+    expect(engine.js?.kind).toBe('node');
+    expect(engine.commonArgs().join(' ')).toContain(`node:${process.execPath}`);
+  });
 });
 
 describe('info', () => {

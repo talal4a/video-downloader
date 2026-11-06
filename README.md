@@ -87,13 +87,28 @@ On macOS, install the helpers once for full features: `brew install ffmpeg aria2
 | `npm run test:integration` | Real downloads with yt-dlp/FFmpeg/aria2 against a local test server (no internet needed) |
 | `npm run test:e2e` | Drives the real Electron app (paste, download, cancel, clipboard, settings) |
 | `npm run lint` / `npm run typecheck` | Code checks |
+| `npm run dist:win` | Builds the Windows installer (`release/Video-Downloader-Setup-*.exe`) |
 | `npm run dist:mac` | Builds a `.dmg` for your Mac (unsigned) |
 
 ### Getting the installer for your friend
 
-You don't need a Windows PC: **GitHub Actions builds and tests the Windows installer** on a real Windows machine for every push to `main`.
+You don't need a Windows PC. There are two ways:
 
-- **Every push:** GitHub → **Actions** → latest "Build & test" run → download the **Video-Downloader-Windows-Setup** artifact (a zip containing the `.exe`).
+**A. Build it on your Mac (2 minutes):**
+
+```bash
+npm run dist:win
+```
+
+This downloads the official Windows versions of yt-dlp, FFmpeg and aria2 (from their GitHub releases), builds the app and creates `release/Video-Downloader-Setup-x.y.z.exe`. No Wine is needed on modern macOS.
+
+**B. Let GitHub build and test it on a real Windows machine:** the workflow in `.github/workflows/build.yml` runs all tests on Windows, builds the installer and tests the installed app for every push to `main`.
+
+> If the **Actions** tab shows runs that fail immediately with "startup failure", GitHub Actions is blocked for the account, not by the code. For private repositories this is usually billing: open **GitHub → Settings → Billing and plans** and make sure there is no payment problem, Actions minutes are left, and the spending limit is not $0 when minutes are used up (or make the repository public, which makes Actions free). Also check **repository → Settings → Actions → General → Allow all actions**. Then click **Re-run** on the latest run.
+
+With GitHub Actions working:
+
+- **Every push to `main`:** GitHub → **Actions** → latest "Build & test" run → download the **Video-Downloader-Windows-Setup** artifact (a zip containing the `.exe`).
 - **Releases:** bump `"version"` in `package.json`, then push a tag:
 
   ```bash
@@ -120,7 +135,8 @@ Next.js UI (src/)  ──IPC──▶  Electron main process (electron/)
 ```
 
 - The UI is a static Next.js export served inside the app from `app://local/` (no web server, works offline).
-- YouTube needs a JavaScript runtime; the app reuses Electron's built-in Node.js, so nothing extra is installed.
+- If a helper program is missing (for example an antivirus removed `yt-dlp.exe`), the app downloads it again from its official GitHub release on start, with a progress bar (yt-dlp and Deno are checksum-verified).
+- YouTube needs a JavaScript runtime; the app reuses Electron's built-in Node.js (checked by a self-test at start), so nothing extra is installed. If that ever fails, it falls back to Deno.
 - Downloads run in a temporary folder with plain ASCII names and are moved to the Downloads folder at the end, with safe file names (Urdu/Arabic/emoji titles are kept).
 - aria2 does not report progress through a pipe, so the app reads aria2's control file every 0.7 s for live percent, speed and time left.
 
