@@ -47,7 +47,9 @@ nsis:
 mac:
   icon: build/icon.png
   category: public.app-category.utilities
-  identity: null
+  # Free "ad-hoc" signature: needed for Apple Silicon Macs (no paid Apple developer account).
+  identity: '-'
+  hardenedRuntime: false
   target:
     - target: dmg
   artifactName: Video-Downloader-${version}-${arch}.${ext}

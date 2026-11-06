@@ -78,6 +78,8 @@ npm run dev            # opens the app with live reload
 
 On macOS, install the helpers once for full features: `brew install ffmpeg aria2`.
 
+**Use it as a normal Mac app:** run `npm run dist:mac`, open the `.dmg` in the `release` folder and drag **Video Downloader** into **Applications**. It is signed "ad-hoc" (free), so if you copy it to *another* Mac, open it there the first time with right-click → **Open**.
+
 | Command | What it does |
 | --- | --- |
 | `npm run dev` | Next.js dev server + Electron window |
