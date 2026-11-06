@@ -8,7 +8,6 @@ import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
-import extractZip from 'extract-zip';
 
 const argv = process.argv.slice(2);
 const argOs = argv.includes('--os') ? argv[argv.indexOf('--os') + 1] : null;
@@ -62,6 +61,23 @@ async function firstWorking(urls, dest) {
     }
   }
   throw new Error(`All downloads failed:\n${errors.join('\n')}`);
+}
+
+// Unzip with the tools every computer already has (works with any Node.js version).
+async function extractZip(zip, { dir }) {
+  fs.mkdirSync(dir, { recursive: true });
+  if (process.platform === 'win32') {
+    const tar = path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'tar.exe');
+    execFileSync(fs.existsSync(tar) ? tar : 'tar', ['-xf', zip, '-C', dir]);
+  } else if (process.platform === 'darwin') {
+    execFileSync('ditto', ['-x', '-k', zip, dir]);
+  } else {
+    try {
+      execFileSync('unzip', ['-q', '-o', zip, '-d', dir]);
+    } catch {
+      execFileSync('python3', ['-m', 'zipfile', '-e', zip, dir]);
+    }
+  }
 }
 
 function sha256(file) {

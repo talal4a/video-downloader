@@ -8,6 +8,7 @@ import path from 'node:path';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { run } from './process';
+import { extractZip } from './unzip';
 import type { FetchLike } from './thumbnails';
 
 export interface SetupProgress {
@@ -129,8 +130,7 @@ function listFiles(dir: string): string[] {
 async function extract(archive: string, kind: 'zip' | 'tar.xz', into: string): Promise<void> {
   await fsp.mkdir(into, { recursive: true });
   if (kind === 'zip') {
-    const { default: extractZip } = await import('extract-zip');
-    await extractZip(archive, { dir: path.resolve(into) });
+    await extractZip(archive, into);
     return;
   }
   const r = await run('tar', ['-xJf', archive, '-C', into]).done;
