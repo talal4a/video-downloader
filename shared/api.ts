@@ -42,6 +42,9 @@ export interface VideoDownloaderApi {
   login(id: AccountId): Promise<AccountInfo[]>;
   logout(id: AccountId): Promise<AccountInfo[]>;
 
+  /** Save part of the window (the Preview Studio phone/feed) as a PNG in the download folder. */
+  capturePreview(rect: { x: number; y: number; width: number; height: number }, name: string): Promise<Result<string>>;
+
   getAppInfo(): Promise<AppInfo>;
   getAppUpdate(): Promise<AppUpdateState>;
   checkAppUpdate(): Promise<AppUpdateState>;
@@ -79,6 +82,7 @@ export const IPC = {
   getAccounts: 'accounts:get',
   login: 'accounts:login',
   logout: 'accounts:logout',
+  capturePreview: 'preview:capture',
   getAppInfo: 'app:info',
   getAppUpdate: 'app:update:get',
   checkAppUpdate: 'app:update:check',

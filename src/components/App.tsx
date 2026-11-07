@@ -1,15 +1,17 @@
 'use client';
 
-import { ArrowRight, ClipboardPaste, Download, Link2, LoaderCircle, MousePointerClick, RotateCcw, Settings as SettingsIcon, Sparkles, TriangleAlert, X } from 'lucide-react';
+import { ArrowRight, ClipboardPaste, Download, Link2, LoaderCircle, MousePointerClick, RotateCcw, Settings as SettingsIcon, Smartphone, Sparkles, TriangleAlert, X } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type FormEvent } from 'react';
 import type { AppUpdateState, DownloadRequest, EngineInfo, FriendlyError, Job, MediaInfo, Settings } from '@shared/types';
-import { cx, findUrl, getApi, hostOf } from '@/lib/api';
+import { cx, fileName, findUrl, getApi, hostOf } from '@/lib/api';
+import { EMPTY_PREVIEW, type PreviewData, type PreviewView } from '@/lib/preview';
 import DownloadList from './DownloadList';
 import MediaCard from './MediaCard';
 import PlaylistCard from './PlaylistCard';
+import PreviewStudio from './preview/PreviewStudio';
 import SettingsPanel from './SettingsPanel';
 import { ToastProvider, useToast } from './Toasts';
-import { Button, Card, ProgressBar } from './ui';
+import { Button, Card, ProgressBar, Segmented } from './ui';
 
 type InfoState =
   | { status: 'idle' }
@@ -59,6 +61,25 @@ function Main() {
   const [engine, setEngine] = useState<EngineInfo | null>(null);
   const [appUpdate, setAppUpdate] = useState<AppUpdateState | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [tab, setTab] = useState<'download' | 'preview'>('download');
+  const [preview, setPreview] = useState<PreviewData>(EMPTY_PREVIEW);
+  const [previewView, setPreviewView] = useState<PreviewView>('yt-home');
+  const tabRef = useRef(tab);
+  useEffect(() => {
+    tabRef.current = tab;
+  }, [tab]);
+
+  /** Open the Preview Studio with a downloaded video or a video's thumbnail and details. */
+  const openPreview = useCallback((patch: Partial<PreviewData>) => {
+    setPreview((d) => {
+      for (const key of ['videoUrl', 'thumbUrl'] as const) {
+        if (key in patch && d[key]?.startsWith('blob:') && d[key] !== patch[key]) URL.revokeObjectURL(d[key]!);
+      }
+      return { ...d, ...patch };
+    });
+    setTab('preview');
+    window.scrollTo({ top: 0 });
+  }, []);
   const [clipLink, setClipLink] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
   const requestId = useRef(0);
@@ -130,6 +151,7 @@ function Main() {
   // Ctrl+V anywhere on the page loads the link.
   useEffect(() => {
     const onPaste = (e: ClipboardEvent) => {
+      if (tabRef.current !== 'download') return;
       const target = e.target as HTMLElement | null;
       if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) return;
       const text = e.clipboardData?.getData('text') ?? '';
@@ -192,7 +214,7 @@ function Main() {
       className="min-h-full"
       onDragOver={(e) => {
         e.preventDefault();
-        setDragging(true);
+        if (tab === 'download') setDragging(true);
       }}
       onDragLeave={() => setDragging(false)}
       onDrop={(e) => {
@@ -210,7 +232,7 @@ function Main() {
       )}
 
       <header className="sticky top-0 z-20 border-b border-slate-200/70 bg-slate-50/80 backdrop-blur dark:border-white/10 dark:bg-[#0b1020]/80">
-        <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-6 py-3">
+        <div className={cx('mx-auto flex items-center justify-between gap-4 px-6 py-3', tab === 'preview' ? 'max-w-7xl' : 'max-w-5xl')}>
           <div className="flex items-center gap-3">
             <Logo />
             <div>
@@ -218,6 +240,14 @@ function Main() {
               <p className="text-xs text-slate-500 dark:text-slate-400">Videos · MP3 · Thumbnails — free & open source</p>
             </div>
           </div>
+          <Segmented<'download' | 'preview'>
+            value={tab}
+            onChange={setTab}
+            options={[
+              { value: 'download', label: (<><Download className="size-4" /> Download</>) },
+              { value: 'preview', label: (<><Smartphone className="size-4" /> Preview studio</>) },
+            ]}
+          />
           <div className="flex items-center gap-2">
             {engine && (
               <span
@@ -238,7 +268,7 @@ function Main() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-5xl space-y-5 px-6 py-6">
+      <main className={cx('mx-auto space-y-5 px-6 py-6', tab === 'preview' ? 'max-w-7xl' : 'max-w-5xl')}>
         {appUpdate?.status === 'ready' && (
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-brand-600 px-4 py-3 text-white shadow">
             <span className="inline-flex items-center gap-2 text-sm font-medium">
@@ -282,6 +312,10 @@ function Main() {
           </div>
         )}
 
+        {tab === 'preview' ? (
+          <PreviewStudio data={preview} setData={setPreview} view={previewView} setView={setPreviewView} />
+        ) : (
+          <>
         <Card className="p-6">
           <form onSubmit={onSubmit} className="flex flex-col gap-3 sm:flex-row">
             <div className="relative flex-1">
@@ -421,6 +455,19 @@ function Main() {
                 onStart={startDownloads}
                 onSaveThumbnail={() => saveThumbnail(state.info.key)}
                 onOpenUrl={(u) => void load(u)}
+                onPreview={async () => {
+                  const info = state.info;
+                  const thumb = await api.getThumbnail(info.key);
+                  openPreview({
+                    videoUrl: undefined,
+                    videoName: undefined,
+                    thumbUrl: thumb?.dataUrl,
+                    title: info.title,
+                    channel: info.uploader ?? preview.channel,
+                    views: info.viewCount ?? preview.views,
+                    duration: info.duration,
+                  });
+                }}
               />
             )}
           </div>
@@ -443,8 +490,21 @@ function Main() {
         )}
 
         <div ref={downloadsRef} className="scroll-mt-20">
-          <DownloadList jobs={jobs} />
+          <DownloadList
+            jobs={jobs}
+            onPreview={(job) =>
+              openPreview({
+                videoUrl: `vdmedia://job/${encodeURIComponent(job.id)}/0`,
+                videoName: fileName(job.filePath),
+                thumbUrl: job.request.thumbnail,
+                title: job.request.title,
+                duration: job.request.duration,
+              })
+            }
+          />
         </div>
+          </>
+        )}
       </main>
 
       {settings && <SettingsPanel open={settingsOpen} onClose={() => setSettingsOpen(false)} settings={settings} engine={engine} appUpdate={appUpdate} />}

@@ -1,6 +1,6 @@
 'use client';
 
-import { Captions, Check, Clock, Download, ExternalLink, Eye, Film, ImageDown, ListVideo, Music, Radio, User } from 'lucide-react';
+import { Captions, Check, Clock, Download, ExternalLink, Eye, Film, ImageDown, ListVideo, Music, Radio, Smartphone, User } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { formatBytes, formatCount, formatDuration } from '@shared/format';
 import type { AudioBitrate, DownloadRequest, MediaInfo, MediaKind, QualityChoice, Settings, SubtitleMode } from '@shared/types';
@@ -80,12 +80,14 @@ export default function MediaCard({
   onStart,
   onSaveThumbnail,
   onOpenUrl,
+  onPreview,
 }: {
   info: MediaInfo;
   settings: Settings;
   onStart: (reqs: DownloadRequest[]) => Promise<boolean>;
   onSaveThumbnail: () => Promise<void>;
   onOpenUrl: (url: string) => void;
+  onPreview?: () => void;
 }) {
   const canVideo = info.hasVideo;
   const canAudio = info.hasAudio || info.hasVideo;
@@ -149,6 +151,11 @@ export default function MediaCard({
           >
             Save thumbnail (HD)
           </Button>
+          {onPreview && (
+            <Button className="w-full" variant="ghost" icon={<Smartphone className="size-4" />} onClick={onPreview} data-testid="preview-from-card">
+              Preview on YouTube / Instagram / TikTok
+            </Button>
+          )}
         </div>
 
         <div className="min-w-0 space-y-4">

@@ -1,6 +1,6 @@
 'use client';
 
-import { Ban, CircleAlert, CircleCheck, Film, FolderOpen, Music, Play, RotateCcw, Trash2, TriangleAlert, X, Zap } from 'lucide-react';
+import { Ban, CircleAlert, CircleCheck, Film, FolderOpen, Music, Play, RotateCcw, Smartphone, Trash2, TriangleAlert, X, Zap } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 import { formatBytes, formatEta, formatSpeed, qualityChoiceLabel } from '@shared/format';
 import type { Job } from '@shared/types';
@@ -28,7 +28,7 @@ function JobThumb({ job }: { job: Job }) {
   );
 }
 
-function JobRow({ job }: { job: Job }) {
+function JobRow({ job, onPreview }: { job: Job; onPreview?: (job: Job) => void }) {
   const api = getApi();
   const toast = useToast();
   const [showDetails, setShowDetails] = useState(false);
@@ -119,6 +119,11 @@ function JobRow({ job }: { job: Job }) {
                 <Button size="sm" variant="subtle" icon={<Play className="size-3.5" />} onClick={open}>
                   Play
                 </Button>
+                {onPreview && r.kind === 'video' && job.filePath && (
+                  <IconButton label="Preview on YouTube / Instagram / TikTok" onClick={() => onPreview(job)}>
+                    <Smartphone className="size-4" />
+                  </IconButton>
+                )}
                 <IconButton label="Show in folder" onClick={() => job.filePath && api?.showInFolder(job.filePath)}>
                   <FolderOpen className="size-4" />
                 </IconButton>
@@ -165,7 +170,7 @@ function JobRow({ job }: { job: Job }) {
   );
 }
 
-export default function DownloadList({ jobs }: { jobs: Job[] }) {
+export default function DownloadList({ jobs, onPreview }: { jobs: Job[]; onPreview?: (job: Job) => void }) {
   const api = getApi();
   const active = jobs.filter(isActive).length;
   const finished = jobs.length - active;
@@ -197,7 +202,7 @@ export default function DownloadList({ jobs }: { jobs: Job[] }) {
       ) : (
         <ul className={cx('divide-y divide-slate-100 pb-2 dark:divide-white/5')}>
           {jobs.map((j) => (
-            <JobRow key={j.id} job={j} />
+            <JobRow key={j.id} job={j} onPreview={onPreview} />
           ))}
         </ul>
       )}

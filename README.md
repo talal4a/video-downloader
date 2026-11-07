@@ -25,6 +25,7 @@ Files are saved in **Downloads → Video Downloader**. Click **Play** or the fol
 Other handy things:
 - **Save thumbnail (HD)** saves the video's picture in the biggest size available.
 - **Playlists:** paste a YouTube playlist link and tick the videos you want. They are saved in a folder named after the playlist.
+- **Preview studio:** click **Preview studio** at the top. Add your video and thumbnail (or use a frame from the video), type the title, caption and numbers, and see it on YouTube, Instagram and TikTok screens. **Safe zones** shows what the buttons cover; **Save as picture** saves the preview. The phone icon on a finished download opens it there.
 - **Captions:** choose a language, then **In the video** (turn on/off in the player), **Always visible** (always on screen, takes longer) or **Separate .srt file**.
 - **Several downloads at once:** they queue up and run 3 at a time (changeable in Settings).
 - Closing the window keeps the app running near the clock (system tray) so it can keep catching links. Right-click the icon → **Quit** to close it completely.
@@ -57,6 +58,7 @@ The app keeps a log at `%APPDATA%\Video Downloader\logs\main.log` (useful when a
 | Parallel fragments for DASH/HLS streams | ✅ | 8 fragments at a time |
 | Playlists, multi-video posts | ✅ | |
 | Captions | ✅ | Inside the video (switchable), always visible (drawn on the picture), or `.srt`; English auto-translation for YouTube |
+| Preview studio (social media simulator) | ✅ | See your video + thumbnail on YouTube (Home feed, Shorts), Instagram (Reels, profile grid) and TikTok (For You, profile grid), with safe zones and Save as picture |
 | Queue, cancel, retry, history | ✅ | Automatic retries for network hiccups; engine self-update when a site changes |
 | Instagram / Facebook / TikTok / X private-ish content | ⚠️ | Works after logging in via Settings → Accounts |
 | YouTube age-restricted videos | ❌ | Needs a signed-in YouTube account; Google blocks sign-in inside apps |

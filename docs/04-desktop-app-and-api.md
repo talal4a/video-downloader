@@ -14,7 +14,7 @@ The Electron main process in `electron/`: it owns the window, the tray, the clip
 | --- | --- |
 | `main.ts` | Start-up, window, tray, menus, notifications, IPC handlers, settings, history, logging |
 | `preload.ts` | Exposes `window.vd` safely (`contextBridge`) |
-| `protocol.ts` | Serves the exported UI as `app://local/…` with a strict Content-Security-Policy |
+| `protocol.ts` | Serves the exported UI as `app://local/…` with a strict Content-Security-Policy, and finished downloads as `vdmedia://job/<id>/<n>` (with Range support so videos can seek) for the Preview studio |
 | `clipboard.ts` | Link catching (checks every second) |
 | `accounts.ts` | Optional site log-in and cookie export |
 | `updater.ts` | App self-update (Windows installer builds) |
@@ -52,6 +52,7 @@ Each call returns a promise. Errors come back as `{ ok: false, error: { code, me
 | `getSettings()`, `updateSettings(patch)`, `chooseDownloadDir()` | Settings |
 | `getEngineInfo()`, `updateEngine()` | Tool status; update yt-dlp or repair missing tools |
 | `getAccounts()`, `login(id)`, `logout(id)` | Optional site accounts |
+| `capturePreview(rect, name)` | Save part of the window (the Preview studio) as `Preview - <name>.png` in the download folder |
 | `getAppInfo()`, `getAppUpdate()`, `checkAppUpdate()`, `installAppUpdate()` | Version and self-update |
 
 Events: `onDownloadUpdate`, `onDownloadRemoved`, `onClipboardLink`, `onOpenUrl`, `onSettingsChanged`, `onEngineInfo`, `onAppUpdate`. Download updates are sent at most 4 times a second per job.

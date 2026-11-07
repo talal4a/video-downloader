@@ -31,7 +31,7 @@ import { defaultSettings, sanitizeSettings } from './core/settings';
 import { debounce, JsonFile } from './core/store';
 import { toCommonImage } from './core/thumbnails';
 import { extractFirstUrl, safeParseUrl } from './core/urls';
-import { APP_ORIGIN, handleAppProtocol, registerAppScheme } from './protocol';
+import { APP_ORIGIN, handleAppProtocol, handleMediaProtocol, registerAppScheme } from './protocol';
 import { AppUpdater } from './updater';
 
 // ---------------------------------------------------------------- setup
@@ -522,6 +522,25 @@ function registerIpc(): void {
     return accounts.list();
   });
 
+  ipcMain.handle(IPC.capturePreview, async (_e, rect: unknown, name: unknown): Promise<Result<string>> => {
+    const r = rect as { x?: unknown; y?: unknown; width?: unknown; height?: unknown } | null;
+    const nums = r ? [r.x, r.y, r.width, r.height].map(Number) : [];
+    if (!mainWindow || nums.length !== 4 || nums.some((n) => !Number.isFinite(n)) || nums[2] < 10 || nums[3] < 10) {
+      return { ok: false, error: friendly('unknown', 'Nothing to save.') };
+    }
+    try {
+      const [x, y, width, height] = nums.map((n) => Math.max(0, Math.round(n)));
+      const image = await mainWindow.webContents.capturePage({ x, y, width, height });
+      await ensureDir(settings.downloadDir);
+      const base = sanitizeFileName(`Preview - ${typeof name === 'string' ? name : 'post'}`, 100);
+      const target = uniquePath(settings.downloadDir, base, 'png');
+      await fsp.writeFile(target, image.toPNG());
+      return ok(target);
+    } catch (err) {
+      return { ok: false, error: friendly('save_failed', 'Could not save the picture.', 'Check the download folder in Settings.', String(err)) };
+    }
+  });
+
   ipcMain.handle(IPC.getAppInfo, () => ({ version: app.getVersion(), platform: process.platform, isPackaged: app.isPackaged }));
   ipcMain.handle(IPC.getAppUpdate, () => updater.state);
   ipcMain.handle(IPC.checkAppUpdate, () => updater.check());
@@ -578,6 +597,10 @@ if (!app.requestSingleInstanceLock()) {
     log(`Starting Video Downloader ${app.getVersion()} (${process.platform}, packaged=${app.isPackaged})`);
     setAppMenu();
     if (!isDev) handleAppProtocol(path.join(appRoot, 'out'));
+    handleMediaProtocol((jobId, index) => {
+      const file = manager.get(jobId)?.files?.[index];
+      return file && fs.existsSync(file) ? file : null;
+    });
     registerIpc();
     await removeDir(tempRoot);
     engineReady = engine

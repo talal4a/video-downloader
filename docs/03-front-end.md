@@ -27,6 +27,9 @@ No web server, no database, no outside fonts: everything works offline. Talking 
 | `src/components/PlaylistCard.tsx` | Playlists and multi-video posts with selection |
 | `src/components/DownloadList.tsx` | Downloads list rows, progress, actions, error details |
 | `src/components/SettingsPanel.tsx` | Settings side panel |
+| `src/components/preview/PreviewStudio.tsx` | Preview studio: post inputs (video, thumbnail, frame grab, profile picture, text, numbers), platform/view tabs, safe zones, play/sound, Save as picture |
+| `src/components/preview/Platforms.tsx` | The six look-alike screens (YouTube home and Shorts, Instagram Reels and grid, TikTok For You and grid), phone frame, safe-zone overlay |
+| `src/lib/preview.ts` | Preview data, defaults, views per platform, safe-zone sizes, sample feed posts, count formatting ("1.3M"), caption hashtag parts |
 | `src/components/Toasts.tsx` | Small pop-up messages (success, error, info) with an optional action |
 | `src/components/ui.tsx` | Button, IconButton, Toggle, Segmented, Chip, ProgressBar, Card |
 | `src/lib/api.ts` | `getApi()` for `window.vd`, link finder, class helper |
@@ -41,6 +44,7 @@ No web server, no database, no outside fonts: everything works offline. Talking 
 - **Thumbnails** come back as a `data:` URL from `vd.getThumbnail(key)` (so sites that block hot-linking still show).
 - **Downloads:** `vd.startDownloads([...])` adds jobs; live changes arrive through `vd.onDownloadUpdate(job)` and `vd.onDownloadRemoved(id)`; the list is merged by job id.
 - **Live events also used:** `onClipboardLink`, `onOpenUrl` (notification, tray, right-click, second launch), `onSettingsChanged`, `onEngineInfo` (status and first-start progress), `onAppUpdate`.
+- **Preview studio:** uploaded files become `blob:` addresses (they never leave the computer); finished downloads play through `vdmedia://job/<id>/0`. The studio state lives in `App`, so switching tabs keeps it. **Save as picture** calls `vd.capturePreview(rect, name)`.
 - **Settings** are read with `vd.getSettings()` and changed with `vd.updateSettings(patch)`; the main process checks every value.
 - **Theme:** the chosen mode is also kept in `localStorage` (`vd-theme`) only so the first paint uses the right colours; the real value lives in the app's settings file.
 
@@ -52,6 +56,8 @@ No web server, no database, no outside fonts: everything works offline. Talking 
 | `loading` | Skeleton card "Getting video details from …" |
 | `error` | Message, hint, **Try again**, **Open Accounts** for login errors, technical details |
 | `ready` | `MediaCard` or `PlaylistCard` |
+
+A header switch shows either the downloader or the Preview studio; downloads keep running in the background.
 
 ## Accessibility and comfort
 
@@ -68,4 +74,4 @@ No web server, no database, no outside fonts: everything works offline. Talking 
 | `npm run typecheck` | TypeScript for the UI and the desktop app |
 | `npm run test:e2e` | Drives the real app with Playwright (see [Security, setup and release](05-security-setup-and-release.md)) |
 
-Elements used by tests: `url-input`, `go-button`, `paste-button`, `media-card`, `download-button`, `job` (with `data-status`), `info-error`, `open-settings`, `setup-banner`.
+Elements used by tests: `url-input`, `go-button`, `paste-button`, `media-card`, `download-button`, `job` (with `data-status`), `info-error`, `open-settings`, `setup-banner`, `captions`, `preview-studio`, `studio-*` inputs, `preview-*` screens, `preview-video`, `safe-zones`.

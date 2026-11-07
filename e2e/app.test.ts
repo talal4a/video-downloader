@@ -162,6 +162,73 @@ describe('desktop app', () => {
     await shot('06-error');
   });
 
+  it('Preview studio: shows a video and thumbnail on YouTube, Instagram and TikTok', async () => {
+    const fixtures = path.join(repo, 'tests', '.tmp', 'fixtures');
+    await page.click('button[role=radio]:has-text("Preview studio")');
+    await page.waitForSelector('[data-testid=preview-studio]');
+    await page.setInputFiles('[data-testid=studio-video-input]', path.join(fixtures, 'sample.mp4'));
+    await page.setInputFiles('[data-testid=studio-thumb-input]', path.join(fixtures, 'thumb.jpg'));
+    await page.fill('[data-testid=studio-title]', 'My amazing travel vlog');
+    await page.fill('[data-testid=studio-caption]', 'Sunset in the mountains #travel @friend');
+    await page.fill('[data-testid=studio-views]', '1250000');
+    await expect(page.locator('[data-testid=yt-my-card]').innerText()).resolves.toContain('My amazing travel vlog');
+    await expect(page.locator('[data-testid=yt-my-card]').innerText()).resolves.toContain('1.3M views');
+    await shot('11-studio-youtube-home');
+
+    const views: [string, string, string][] = [
+      ['YouTube', 'Shorts', 'preview-yt-shorts'],
+      ['Instagram', 'Reels feed', 'preview-ig-reels'],
+      ['Instagram', 'Profile grid', 'preview-ig-grid'],
+      ['TikTok', 'For You feed', 'preview-tt-fyp'],
+      ['TikTok', 'Profile grid', 'preview-tt-grid'],
+    ];
+    for (const [platform, view, testId] of views) {
+      await page.click(`[data-testid=preview-studio] button[role=radio]:has-text("${platform}")`);
+      await page.click(`[data-testid=preview-studio] button[role=radio]:has-text("${view}")`);
+      await page.waitForSelector(`[data-testid=${testId}]`);
+      if (view === 'Shorts' || view === 'Reels feed' || view === 'For You feed') {
+        // The uploaded video really plays inside the phone.
+        await page.waitForFunction(() => {
+          const v = document.querySelector('[data-testid=preview-video]') as HTMLVideoElement | null;
+          return !!v && v.readyState >= 2;
+        }, null, { timeout: 30_000 });
+      }
+      if (view === 'For You feed') {
+        await page.click('[data-testid=studio-safe-zones]');
+        await page.waitForSelector('[data-testid=safe-zones]');
+        await expect(page.locator('[data-testid=preview-tt-fyp]').innerText()).resolves.toContain('#travel');
+      }
+      await shot(`12-studio-${testId}`);
+    }
+
+    // Use a frame of the video as the thumbnail.
+    await page.waitForFunction(() => {
+      const v = document.querySelector('[data-testid=preview-studio] video[controls]') as HTMLVideoElement | null;
+      return !!v && v.readyState >= 2;
+    });
+    await page.click('[data-testid=studio-use-frame]');
+    await page.waitForSelector('text=Thumbnail set from the video');
+
+    // Save the preview as a picture.
+    await page.click('[data-testid=studio-save-picture]');
+    await page.waitForSelector('text=Preview saved as a picture', { timeout: 30_000 });
+    expect(filesIn(downloads).some((f) => f.startsWith('Preview - TikTok') && f.endsWith('.png'))).toBe(true);
+  });
+
+  it('Preview studio: opens a finished download and plays it', async () => {
+    await page.click('button[role=radio]:has-text("Download")');
+    const previewButton = page.locator('[data-testid=job][data-status=done] button[aria-label^="Preview on"]').first();
+    await previewButton.click();
+    await page.waitForSelector('[data-testid=preview-studio]');
+    await page.click('[data-testid=preview-studio] button[role=radio]:has-text("Instagram")');
+    await page.waitForFunction(() => {
+      const v = document.querySelector('[data-testid=preview-video]') as HTMLVideoElement | null;
+      return !!v && v.src.startsWith('vdmedia://') && v.readyState >= 2;
+    }, null, { timeout: 30_000 });
+    await shot('13-studio-from-download');
+    await page.click('button[role=radio]:has-text("Download")');
+  });
+
   it('opens settings and shows the engine status', async () => {
     await page.click('[data-testid=open-settings]');
     await page.waitForSelector('text=Download engine');

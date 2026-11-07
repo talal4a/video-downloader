@@ -31,6 +31,7 @@ const api: VideoDownloaderApi = {
   getAccounts: () => ipcRenderer.invoke(IPC.getAccounts),
   login: (id) => ipcRenderer.invoke(IPC.login, id),
   logout: (id) => ipcRenderer.invoke(IPC.logout, id),
+  capturePreview: (rect, name) => ipcRenderer.invoke(IPC.capturePreview, rect, name),
   getAppInfo: () => ipcRenderer.invoke(IPC.getAppInfo),
   getAppUpdate: () => ipcRenderer.invoke(IPC.getAppUpdate),
   checkAppUpdate: () => ipcRenderer.invoke(IPC.checkAppUpdate),

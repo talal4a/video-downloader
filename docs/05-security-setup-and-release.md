@@ -9,6 +9,7 @@ How the app keeps people safe, and how to run, test, build and release it.
 - **No navigation away:** links to other sites open in the normal browser; pop-ups are blocked.
 - **Checked input:** every download request is re-checked in the main process (link must be `http(s)`, kind, quality 100-4320, bitrate, subtitle code, sizes). Settings are corrected to safe values.
 - **Files:** **Play / Show in folder** only work for files in the download folder or made by a download. Only `http(s)` links can be opened externally.
+- **Preview studio:** uploaded videos and pictures stay in memory as `blob:` addresses. `vdmedia://` only serves files listed in finished downloads (by job id), never a path typed by the page. The CSP allows `blob:` and `vdmedia:` only for images and media.
 - **Downloads from the internet:** yt-dlp and Deno are checked against their official SHA-256 sums; zips with `../` paths are refused; all tools come from their official GitHub releases.
 - **No shell:** programs are started with an argument list (never through a command shell), so titles and links cannot run commands. `--` comes before every link.
 - **Accounts:** passwords are typed into the site itself; cookies are stored per site with owner-only permissions and used only for that site.
@@ -62,9 +63,9 @@ Normal users never need these.
 
 | Suite | Count | What |
 | --- | --- | --- |
-| Unit (`tests/unit`) | 75 | Link detection, error messages, safe names, quality labels and sizes, yt-dlp commands, progress parsing, aria2 control file, cookies, settings, ZIP extractor |
+| Unit (`tests/unit`) | 79 | Link detection, error messages, safe names, Preview studio helpers, quality labels and sizes, yt-dlp commands, progress parsing, aria2 control file, cookies, settings, ZIP extractor |
 | Integration (`tests/integration`) | 24 (+1 internet) | Real yt-dlp, FFmpeg and aria2 against a local server: 720p/best merge, MP3, thumbnails, captions (inside the video, `.srt`, drawn onto the picture and checked by pixel brightness), Unicode names, `(1)` copies, turbo with live progress, cancel, multi-video posts, parallel queue, errors, first-start tool download, checksum refusal, YouTube runtime and Deno fallback |
-| End-to-end (`e2e`) | 11 | Starts the real app: paste → download 720p, MP3 + thumbnail, captions inside the video, clipboard catching, live progress + cancel, error screen, settings, dark mode, Node.js self-test of the installed app, real YouTube (internet) |
+| End-to-end (`e2e`) | 13 | Starts the real app: paste → download 720p, MP3 + thumbnail, captions inside the video, Preview studio (upload video + thumbnail, all six views, video playing, safe zones, frame as thumbnail, Save as picture, open a finished download), clipboard catching, live progress + cancel, error screen, settings, dark mode, Node.js self-test of the installed app, real YouTube (internet) |
 
 - The local server (`tests/helpers/media-server.ts`) supports Range requests and a slow mode; test videos are made with FFmpeg (`tests/helpers/fixtures.ts`).
 - Checked on Node.js 22 and 26. The E2E suite was also run against the packaged app.

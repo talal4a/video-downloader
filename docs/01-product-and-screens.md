@@ -16,7 +16,7 @@ YouTube (videos, Shorts, playlists, channels), Instagram (posts, reels, stories)
 
 | Part | What it does |
 | --- | --- |
-| Header | Logo, engine status chip (**Ready**, **Setting up…**, **Updating engine…** or **Problem**), **Settings** button |
+| Header | Logo, **Download / Preview studio** switch, engine status chip (**Ready**, **Setting up…**, **Updating engine…** or **Problem**), **Settings** button |
 | Link box | "Paste a video link here". Pasting a link loads it straight away. **Paste** reads the clipboard; **Get video** loads what is typed; **×** clears |
 | "Works with" chips | The best-known supported sites |
 | First-time steps | Three cards (copy a link, paste it, pick quality) shown until the first download |
@@ -69,6 +69,35 @@ YouTube (videos, Shorts, playlists, channels), Instagram (posts, reels, stories)
 - Warnings in amber, for example "Captions are not available for this video, so it was saved without them." or "The cover picture could not be added to this MP3."
 - The list is kept between restarts (last 500). Downloads running when the app was closed show "The download stopped because the app was closed" with **Retry**.
 - Windows taskbar icon shows the overall progress.
+
+## Preview studio
+
+See how a video and its thumbnail will look on social media before posting. Open it with **Preview studio** in the header, with **Preview on YouTube / Instagram / TikTok** on a video card (uses that video's thumbnail and details), or with the phone icon on a finished download (plays the downloaded video).
+
+**Your post (left side)**
+
+- **Choose video** (MP4, MOV, WebM…) or drop it on the page. A small player lets you pick a moment and **Use this frame as thumbnail**.
+- **Thumbnail** picture (JPG, PNG, WebP) and **Profile picture**, each with **Remove**.
+- Title (YouTube), channel / display name, @username, caption with #hashtags and @mentions (shown bold), sound / music, views, likes, comments, shares, posted time ("2 days ago"…), verified badge. **Reset** clears everything.
+- Files stay on the computer; nothing is uploaded.
+
+**Preview (right side)**
+
+| Platform | Views | What it shows |
+| --- | --- | --- |
+| YouTube | Home feed | Browser-style home page with your 16:9 thumbnail, duration, channel, views and age among other videos. Hovering your card plays the video. **Dark / Light** |
+| YouTube | Shorts | Phone with your video full screen, like/dislike/comment/share/remix, @username + Subscribe, title, sound, bottom bar |
+| Instagram | Reels feed | Phone with "Reels" header, heart/comment/send counts, username + Follow, caption, audio line |
+| Instagram | Profile grid | Profile header (posts, followers, following, bio) and the 3:4 grid with your cover first and its play count |
+| TikTok | For You feed | "Following / For You" tabs, profile + plus button, heart/comment/save/share, spinning sound disc, caption, sound |
+| TikTok | Profile grid | Profile with following/followers/likes and the 3:4 grid with play counts |
+
+- **Real time:** every change (thumbnail, text, numbers, photo) shows at once.
+- **Safe zones** (Shorts, Reels, For You): red shows what the buttons and text cover, a dashed green box shows the safe area for faces and text.
+- **Play / Pause** and **Sound on / off** for the video.
+- **Save as picture** saves the current preview as a PNG in the download folder (for example to send to a client).
+- A tip under the tabs explains each view (for example "The profile grid crops your cover to 3:4").
+- These are look-alike previews for planning (no official logos); the real apps change their layouts from time to time.
 
 ## IDM-style link catching
 
